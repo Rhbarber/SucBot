@@ -9,7 +9,7 @@
   "author": "Ashie#2001",
   "license": "MIT",
   "dependencies": {
-    "better-sqlite3": "^7.1.1",
+    "better-sqlite3": "^7.4.3",
     "discord.js": "^12.4.1",
     "discord.js-commando": "^0.10.0",
     "fs": "0.0.1-security",

@@ -25,7 +25,7 @@ fs.readdir("./commands/", (err, files) => {
 bot.on("ready", async () => {
     console.log(`Online`);
 
-    bot.user.setActivity(config.status);
+    await bot.user.setActivity(config.status);
     bot.on("message", async message => {
         if (message.author.bot) return;
         if (message.channel.type === "dm") return;

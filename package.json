@@ -1,7 +1,7 @@
 {
-  "name": "esteban",
+  "name": "sucbot",
   "version": "1.0.0",
-  "description": "Bot for Esteban.",
+  "description": "SucBot made by AshiePleb and Rhbarber.",
   "main": "bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

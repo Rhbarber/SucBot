@@ -1,6 +1,6 @@
 {
   "name": "sucbot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "SucBot made by AshiePleb and Rhbarber.",
   "main": "bot.js",
   "scripts": {
@@ -10,13 +10,13 @@
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^7.4.3",
-    "discord.js": "^13.0.0",
-    "discord.js-commando": "^0.12.3",
+    "discord.js": "^12.4.1",
+    "discord.js-commando": "^0.10.0",
     "fs": "0.0.1-security",
     "lodash": "^4.17.21",
     "moment": "^2.29.1",
     "moment-duration-format": "^2.3.2",
-    "parse-ms": "^3.0.0",
+    "parse-ms": "^2.1.0",
     "quick.db": "^7.1.3",
     "request": "^2.88.2",
     "snekfetch": "^4.0.4"

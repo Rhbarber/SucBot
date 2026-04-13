@@ -32,7 +32,7 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor(client.config.embedColor)
             .setTitle(`${name}'s skin`)
-            .setImage(`https://crafatar.com/renders/head/${id}?overlay`)
+            .setImage(`https://api.mineatar.io/head/${id}`)
             .setURL(`https://namemc.com/profile/${id}`)
             .setFooter({
                 text: `Requested by ${interaction.user.tag}`,

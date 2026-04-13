@@ -8,13 +8,14 @@ module.exports = {
     async execute(interaction, client) {
         await interaction.deferReply();
 
-        // cataas.com — actively maintained cat-as-a-service API
         const res = await fetch("https://cataas.com/cat?json=true");
-        const { _id } = await res.json();
+        const data = await res.json();
+
+        const imageUrl = `https://cataas.com${data.url}`;
 
         const embed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setImage(`https://cataas.com${data.url}`)
+            .setImage(imageUrl)
             .setFooter({
                 text: `Requested by ${interaction.user.tag}`,
                 iconURL: interaction.user.displayAvatarURL(),

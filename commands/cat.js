@@ -14,7 +14,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setImage(`https://cataas.com/cat/${_id}`)
+            .setImage(`https://cataas.com${data.url}`)
             .setFooter({
                 text: `Requested by ${interaction.user.tag}`,
                 iconURL: interaction.user.displayAvatarURL(),

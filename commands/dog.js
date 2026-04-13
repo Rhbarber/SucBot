@@ -8,12 +8,24 @@ module.exports = {
     async execute(interaction, client) {
         await interaction.deferReply();
 
-        const res  = await fetch("https://random.dog/woof.json");
-        const { url, fileSizeBytes } = await res.json();
+        let imageUrl = null;
 
-        // random.dog can return videos — skip them and retry once
-        const isMedia = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-        const imageUrl = isMedia ? url : (await (await fetch("https://random.dog/woof.json")).json()).url;
+        // Retry up to 5 times because random.dog may return videos
+        for (let i = 0; i < 5; i++) {
+            const res = await fetch("https://random.dog/woof.json");
+            const data = await res.json();
+
+            if (/\.(jpg|jpeg|png|gif|webp)$/i.test(data.url)) {
+                imageUrl = data.url;
+                break;
+            }
+        }
+
+        if (!imageUrl) {
+            return interaction.editReply({
+                content: "Could not fetch a dog image. Please try again."
+            });
+        }
 
         const embed = new EmbedBuilder()
             .setColor(client.config.embedColor)

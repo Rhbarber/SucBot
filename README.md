@@ -19,7 +19,7 @@ Configuration is split across two files: `.env` for sensitive credentials and `c
 
 ### `.env`
 
-Create a `.env` file at the root of the project (you can copy `.env.example` as a starting point).
+Create a `.env` file at the root of the project (you can copy `.env.example` as a starting point). **Never commit this file to Git.**
 
 ```env
 TOKEN=your_bot_token_here
@@ -103,7 +103,7 @@ module.exports = {
 };
 ```
 
-## Changes from the original made by [AshiePleb](https://github.com/AshiePleb)
+## Changes from the original
 
 | Before | Now |
 |---|---|
@@ -116,3 +116,65 @@ module.exports = {
 | `fs` npm package (unnecessary) | Native `node:fs` |
 | `message` listener nested inside `ready` | Correctly separated |
 | Errors silenced with `catch(e) {}` | Proper error handling |
+
+## Commands
+
+### 🛡️ Moderation
+| Command | Description | Permission |
+|---|---|---|
+| `/ban` | Ban a member with an optional reason and message deletion | Ban Members |
+| `/kick` | Kick a member with an optional reason | Kick Members |
+| `/mute` | Time out a member for a set duration | Moderate Members |
+| `/unmute` | Remove a timeout from a member | Moderate Members |
+| `/warn` | Issue a warning to a member (stored in DB, DMs the user) | Moderate Members |
+| `/warnings list` | View all warnings for a member | Moderate Members |
+| `/warnings remove` | Remove a specific warning by ID | Moderate Members |
+| `/warnings clear` | Clear all warnings for a member | Moderate Members |
+| `/purge` | Bulk delete up to 100 messages, optionally filtered by user | Manage Messages |
+
+### 💰 Economy
+| Command | Description |
+|---|---|
+| `/balance` | Check your own or another user's coin balance |
+| `/daily` | Collect your daily reward (100 🪙, 24h cooldown) |
+| `/weekly` | Collect your weekly reward (500 🪙, 7d cooldown) |
+| `/work` | Work a random job for coins (12h cooldown) |
+| `/transfer` | Send coins to another member |
+| `/leaderboard` | Top 10 richest members in the server |
+| `/inventory` | View your or another user's item inventory |
+
+### ℹ️ Info
+| Command | Description |
+|---|---|
+| `/userinfo` | Account age, roles, join date, and more for a user |
+| `/serverinfo` | Server stats, member count, boost level, and more |
+| `/ping` | Bot latency, WebSocket ping, RAM usage, and uptime |
+
+### 🎮 Games
+| Command | Description | Requires |
+|---|---|---|
+| `/lol` | League of Legends profile — rank, W/L, KDA, champion mastery | `RIOT_API_KEY` in `.env` |
+| `/fortnite` | Fortnite stats — wins, K/D, win rate across all modes | Nothing |
+
+### 🐾 Fun
+| Command | Description |
+|---|---|
+| `/dog` | Random dog picture |
+| `/cat` | Random cat picture |
+| `/skin` | Minecraft player skin head |
+| `/ip` | Minecraft server info |
+
+### 🔧 Owner Only
+| Command | Description |
+|---|---|
+| `/resetcooldown` | Reset a daily/weekly/work cooldown for any user |
+
+---
+
+## API Keys
+
+### Riot Games (League of Legends)
+1. Go to [developer.riotgames.com](https://developer.riotgames.com) and log in
+2. A **Development API Key** is generated automatically — it's free but expires every 24 hours
+3. For a permanent key, submit a **Personal API Key** application (free, takes a few days)
+4. Add the key to your `.env` as `RIOT_API_KEY`

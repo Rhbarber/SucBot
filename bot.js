@@ -36,21 +36,34 @@ client.commands  = new Collection();
 client.cooldowns = new Collection();
 client.config    = config;
 
-// ── Load commands ─────────────────────────────────────────────────────────────
+// ── Load commands (walks all subdirectories of /commands) ────────────────────
 const commandsPath = path.join(__dirname, "commands");
-const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith(".js"));
 
-for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    const command  = require(filePath);
+function loadCommands(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
 
-    if (!("data" in command) || !("execute" in command)) {
-        console.warn(`[WARN] ${filePath} is missing "data" or "execute". Skipping.`);
-        continue;
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+            loadCommands(fullPath); // recurse into subdirectory
+            continue;
+        }
+
+        if (!entry.name.endsWith(".js")) continue;
+
+        const command = require(fullPath);
+
+        if (!("data" in command) || !("execute" in command)) {
+            console.warn(`[WARN] ${fullPath} is missing "data" or "execute". Skipping.`);
+            continue;
+        }
+
+        client.commands.set(command.data.name, command);
     }
-
-    client.commands.set(command.data.name, command);
 }
+
+loadCommands(commandsPath);
 
 // ── Deploy slash commands ─────────────────────────────────────────────────────
 async function deployCommands() {

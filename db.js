@@ -16,6 +16,21 @@ function buildSQLiteAdapter() {
             key   TEXT PRIMARY KEY,
             value INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS warnings (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id  TEXT NOT NULL,
+            user_id   TEXT NOT NULL,
+            mod_id    TEXT NOT NULL,
+            reason    TEXT NOT NULL,
+            timestamp INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS inventory (
+            guild_id  TEXT NOT NULL,
+            user_id   TEXT NOT NULL,
+            item      TEXT NOT NULL,
+            quantity  INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (guild_id, user_id, item)
+        );
     `);
 
     return {
@@ -30,6 +45,14 @@ function buildSQLiteAdapter() {
                     INSERT INTO economy (key, value) VALUES (?, ?)
                     ON CONFLICT(key) DO UPDATE SET value = value + excluded.value
                 `).run(`money_${guildId}_${userId}`, amount);
+            },
+            async getLeaderboard(guildId, limit = 10) {
+                return db.prepare(`
+                    SELECT key, value FROM economy
+                    WHERE key LIKE ?
+                    ORDER BY value DESC
+                    LIMIT ?
+                `).all(`money_${guildId}_%`, limit);
             },
         },
         cooldowns: {
@@ -50,6 +73,44 @@ function buildSQLiteAdapter() {
                 }
             },
         },
+        warnings: {
+            async add(guildId, userId, modId, reason) {
+                db.prepare(`
+                    INSERT INTO warnings (guild_id, user_id, mod_id, reason, timestamp)
+                    VALUES (?, ?, ?, ?, ?)
+                `).run(guildId, userId, modId, reason, Date.now());
+            },
+            async get(guildId, userId) {
+                return db.prepare(`
+                    SELECT * FROM warnings
+                    WHERE guild_id = ? AND user_id = ?
+                    ORDER BY timestamp DESC
+                `).all(guildId, userId);
+            },
+            async remove(id) {
+                const result = db.prepare("DELETE FROM warnings WHERE id = ?").run(id);
+                return result.changes > 0;
+            },
+            async clear(guildId, userId) {
+                db.prepare("DELETE FROM warnings WHERE guild_id = ? AND user_id = ?")
+                    .run(guildId, userId);
+            },
+        },
+        inventory: {
+            async get(guildId, userId) {
+                return db.prepare(`
+                    SELECT item, quantity FROM inventory
+                    WHERE guild_id = ? AND user_id = ?
+                    ORDER BY item ASC
+                `).all(guildId, userId);
+            },
+            async add(guildId, userId, item, quantity = 1) {
+                db.prepare(`
+                    INSERT INTO inventory (guild_id, user_id, item, quantity) VALUES (?, ?, ?, ?)
+                    ON CONFLICT(guild_id, user_id, item) DO UPDATE SET quantity = quantity + excluded.quantity
+                `).run(guildId, userId, item, quantity);
+            },
+        },
     };
 }
 
@@ -65,7 +126,6 @@ function buildMySQLAdapter() {
         database: database.mysql.database,
     });
 
-    // Create tables on first use
     async function init() {
         await pool.execute(`
             CREATE TABLE IF NOT EXISTS economy (
@@ -79,9 +139,28 @@ function buildMySQLAdapter() {
                 value    BIGINT NOT NULL
             )
         `);
+        await pool.execute(`
+            CREATE TABLE IF NOT EXISTS warnings (
+                id        INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id  VARCHAR(20) NOT NULL,
+                user_id   VARCHAR(20) NOT NULL,
+                mod_id    VARCHAR(20) NOT NULL,
+                reason    TEXT NOT NULL,
+                timestamp BIGINT NOT NULL,
+                INDEX idx_guild_user (guild_id, user_id)
+            )
+        `);
+        await pool.execute(`
+            CREATE TABLE IF NOT EXISTS inventory (
+                guild_id  VARCHAR(20) NOT NULL,
+                user_id   VARCHAR(20) NOT NULL,
+                item      VARCHAR(100) NOT NULL,
+                quantity  INT NOT NULL DEFAULT 1,
+                PRIMARY KEY (guild_id, user_id, item)
+            )
+        `);
     }
 
-    // Fire-and-forget init — errors will surface on the first query
     init().catch(err => console.error("[DB] MySQL init error:", err));
 
     return {
@@ -99,6 +178,15 @@ function buildMySQLAdapter() {
                      ON DUPLICATE KEY UPDATE value = value + VALUES(value)`,
                     [`money_${guildId}_${userId}`, amount]
                 );
+            },
+            async getLeaderboard(guildId, limit = 10) {
+                const [rows] = await pool.execute(
+                    `SELECT \`key\`, value FROM economy
+                     WHERE \`key\` LIKE ?
+                     ORDER BY value DESC LIMIT ?`,
+                    [`money_${guildId}_%`, limit]
+                );
+                return rows;
             },
         },
         cooldowns: {
@@ -124,10 +212,58 @@ function buildMySQLAdapter() {
                 }
             },
         },
+        warnings: {
+            async add(guildId, userId, modId, reason) {
+                await pool.execute(
+                    `INSERT INTO warnings (guild_id, user_id, mod_id, reason, timestamp)
+                     VALUES (?, ?, ?, ?, ?)`,
+                    [guildId, userId, modId, reason, Date.now()]
+                );
+            },
+            async get(guildId, userId) {
+                const [rows] = await pool.execute(
+                    `SELECT * FROM warnings
+                     WHERE guild_id = ? AND user_id = ?
+                     ORDER BY timestamp DESC`,
+                    [guildId, userId]
+                );
+                return rows;
+            },
+            async remove(id) {
+                const [result] = await pool.execute(
+                    "DELETE FROM warnings WHERE id = ?", [id]
+                );
+                return result.affectedRows > 0;
+            },
+            async clear(guildId, userId) {
+                await pool.execute(
+                    "DELETE FROM warnings WHERE guild_id = ? AND user_id = ?",
+                    [guildId, userId]
+                );
+            },
+        },
+        inventory: {
+            async get(guildId, userId) {
+                const [rows] = await pool.execute(
+                    `SELECT item, quantity FROM inventory
+                     WHERE guild_id = ? AND user_id = ?
+                     ORDER BY item ASC`,
+                    [guildId, userId]
+                );
+                return rows;
+            },
+            async add(guildId, userId, item, quantity = 1) {
+                await pool.execute(
+                    `INSERT INTO inventory (guild_id, user_id, item, quantity) VALUES (?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)`,
+                    [guildId, userId, item, quantity]
+                );
+            },
+        },
     };
 }
 
-// ── Export the right adapter based on config ──────────────────────────────────
+// ── Export the right adapter ──────────────────────────────────────────────────
 const type = database?.type?.toLowerCase();
 
 if (type === "mysql") {

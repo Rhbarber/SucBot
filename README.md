@@ -103,7 +103,7 @@ module.exports = {
 };
 ```
 
-## Changes from the original
+## Changes from the original made by [AshiePleb](https://github.com/AshiePleb)
 
 | Before | Now |
 |---|---|

@@ -14,7 +14,7 @@ module.exports = {
     async execute(interaction, client) {
         await interaction.deferReply();
 
-        const address = interaction.options.getString("address");
+        const address = interaction.options.getString("address").trim().toLowerCase();
 
         // mcsrvstat.us v3 — current API version
         const res = await fetch(`https://api.mcsrvstat.us/3/${encodeURIComponent(address)}`);

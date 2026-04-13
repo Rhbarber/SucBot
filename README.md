@@ -44,7 +44,17 @@ STATUS=with discord.js v14
     "ownerId": "YOUR_DISCORD_USER_ID_HERE",
     "embedColor": "#5865F2",
     "cooldown": 3,
-    "logChannelId": "YOUR_LOG_CHANNEL_ID_HERE"
+    "logChannelId": "YOUR_LOG_CHANNEL_ID_HERE",
+    "database": {
+        "type": "sqlite",
+        "mysql": {
+            "host": "localhost",
+            "port": 3306,
+            "user": "your_user",
+            "password": "your_password",
+            "database": "sucbot"
+        }
+    }
 }
 ```
 
@@ -56,6 +66,12 @@ STATUS=with discord.js v14
 | `embedColor` | `string` | Default color for all bot embeds, in hex format. Accessible in any command via `client.config.embedColor`. |
 | `cooldown` | `number` | Default cooldown in seconds between command uses per user. Individual commands can override this by exporting their own `cooldown` field. |
 | `logChannelId` | `string` | ID of the text channel where the bot will post a startup message and a detailed embed whenever a command throws an error. Set to `""` or remove the field to disable Discord logging. |
+| `database.type` | `string` | Which database backend to use. Accepted values: `"sqlite"` (default, no setup needed) or `"mysql"` (requires a running MySQL/MariaDB server and the fields below). |
+| `database.mysql.host` | `string` | Hostname or IP of your MySQL/MariaDB server. |
+| `database.mysql.port` | `number` | Port of your MySQL/MariaDB server. Default is `3306`. |
+| `database.mysql.user` | `string` | Database username. |
+| `database.mysql.password` | `string` | Database password. |
+| `database.mysql.database` | `string` | Name of the database to use. The bot will create the required tables automatically on first run. |
 
 ## Usage
 
@@ -87,7 +103,7 @@ module.exports = {
 };
 ```
 
-## Changes from the original version from 5 years ago, made by AshiePleb
+## Changes from the original
 
 | Before | Now |
 |---|---|

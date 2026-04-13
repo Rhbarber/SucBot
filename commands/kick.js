@@ -1,47 +1,63 @@
-const Discord = require("discord.js");
-const config = require('../config.json');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 
-module.exports.run = async (client, message, args) => {
-    let NoPerms = new Discord.MessageEmbed()
-        .setDescription(`You do not have the \`\KICK_MEMBERS\` permission.`)
-        .setColor("RANDOM")
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-    if (!message.member.hasPermission("KICK_MEMBERS")) return message.channel.send(NoPerms)
-    if (args[0] == "") {
-        return;
-    }
-    let KickedUser = message.guild.member(message.mentions.users.first() || message.guild.members.cache.get(args[0]));
-    let Usage = new Discord.MessageEmbed()
-        .setDescription(`**Usage:** ${config.prefix}kick @user <optional reason>`)
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-        .setColor("RANDOM")
-    if (!KickedUser) return message.channel.send(Usage);
-    var reason = args.join(" ").slice(22);
-    if (!reason) {
-        var reason = "No reason provided"
-    }
-    let HasPerms = new Discord.MessageEmbed()
-        .setDescription(`This user has the \`\KICK_MEMBERS\` permission so they're exempt from being kicked.`)
-        .setColor("RANDOM")
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-    if (KickedUser.hasPermission("KICK_MEMBERS")) return message.channel.send(HasPerms);
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName("kick")
+        .setDescription("Kicks a member from the server.")
+        .addUserOption(option =>
+            option
+                .setName("user")
+                .setDescription("The member to kick")
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option
+                .setName("reason")
+                .setDescription("Reason for the kick")
+        )
+        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
 
-    let KickEmbed = new Discord.MessageEmbed()
-        .setTitle(`User Kicked!`)
-        .setThumbnail(KickedUser.user.avatarURL())
-        .setColor("RANDOM")
-        .addField("User:", `${KickedUser.user.tag} (${KickedUser.user.id})`)
-        .addField("Moderator:", `${message.author.tag} (${message.author.id})`)
-        .setTimestamp()
-        .addField("Reason", reason);
+    async execute(interaction, client) {
+        const target = interaction.options.getMember("user");
+        const reason = interaction.options.getString("reason") ?? "No reason provided.";
 
-    let loggingChannel = message.guild.channels.cache.find(ch => ch.name === config.modlog)
-    if (!loggingChannel) return;
-    message.guild.member(KickedUser).kick(reason);
-    message.channel.send(`${KickedUser.user.tag} Has been kicked.`)
-    loggingChannel.send(KickEmbed);
-}
-module.exports.help = {
-    name: "kick",
-    aliases: ["kick"]
-}
+        if (!target) {
+            return interaction.reply({ content: "That user is not in this server.", ephemeral: true });
+        }
+
+        // Prevent kicking someone with equal or higher role
+        if (target.roles.highest.position >= interaction.member.roles.highest.position) {
+            return interaction.reply({ content: "You can't kick someone with an equal or higher role than yours.", ephemeral: true });
+        }
+
+        // Check the bot can actually kick this member
+        if (!target.kickable) {
+            return interaction.reply({ content: "I don't have permission to kick this user.", ephemeral: true });
+        }
+
+        await target.kick(reason);
+
+        const embed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .setTitle("Member Kicked")
+            .setThumbnail(target.user.displayAvatarURL())
+            .addFields(
+                { name: "User",      value: `${target.user.tag} (${target.user.id})` },
+                { name: "Moderator", value: `${interaction.user.tag} (${interaction.user.id})` },
+                { name: "Reason",    value: reason },
+            )
+            .setTimestamp()
+            .setFooter({
+                text: `Requested by ${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL(),
+            });
+
+        await interaction.reply({ embeds: [embed] });
+
+        // Log to the log channel if configured
+        if (client.config.logChannelId) {
+            const logChannel = await client.channels.fetch(client.config.logChannelId).catch(() => null);
+            if (logChannel?.isTextBased()) await logChannel.send({ embeds: [embed] });
+        }
+    },
+};

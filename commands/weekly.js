@@ -1,32 +1,45 @@
-const Discord = require("discord.js");
-const config = require('../config.json');
-const db = require("quick.db");
-const ms = require("parse-ms");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { economy, cooldowns } = require("../db");
 
-module.exports.run = async (bot, message, args) => {
-    let user = message.author;
-    let timeout = 604800000;
-    let amount = 500;
-    let weekly = await db.fetch(`weekly_${message.guild.id}_${user.id}`);
-    if (weekly !== null && timeout - (Date.now() - weekly) > 0) {
-        let time = ms(timeout - (Date.now() - weekly));
-        let timeEmbed = new Discord.MessageEmbed()
-            .setColor("RANDOM")
-            .setDescription(`It seems you have already collected your weekly reward.\n\n You can collect it again in ${time.days} day(s) ${time.hours} hour(s), ${time.minutes} minute(s) and ${time.seconds} second(s)!`)
-            .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-        message.channel.send(timeEmbed)
-    } else {
-        let moneyEmbed = new Discord.MessageEmbed()
-            .setColor("RANDOM")
-            .setDescription(`You've collected your weekly reward of \`\`${amount}\`\` coins!\n\n ***Note:** You can deposit your coins by using the \`\`${config.prefix}deposit\`\` command!*`)
-            .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-        message.channel.send(moneyEmbed)
-        db.add(`money_${message.guild.id}_${user.id}`, amount)
-        db.set(`weekly_${message.guild.id}_${user.id}`, Date.now())
-    }
-}
+const TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days
+const AMOUNT  = 500;
 
-module.exports.help = {
-    name: "weekly",
-    aliases: ["weekly"]
-}
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName("weekly")
+        .setDescription("Collect your weekly coin reward."),
+
+    async execute(interaction, client) {
+        const { guildId } = interaction;
+        const userId      = interaction.user.id;
+        const last        = cooldowns.get("weekly", guildId, userId);
+        const remaining   = last ? TIMEOUT - (Date.now() - last) : 0;
+
+        if (remaining > 0) {
+            const availableAt = `<t:${Math.floor((last + TIMEOUT) / 1000)}:R>`;
+            const embed = new EmbedBuilder()
+                .setColor(client.config.embedColor)
+                .setDescription(`You've already collected your weekly reward.\nCome back ${availableAt}.`)
+                .setFooter({
+                    text: `Requested by ${interaction.user.tag}`,
+                    iconURL: interaction.user.displayAvatarURL(),
+                });
+            return interaction.reply({ embeds: [embed] });
+        }
+
+        economy.addBalance(guildId, userId, AMOUNT);
+        cooldowns.set("weekly", guildId, userId);
+
+        const balance = economy.getBalance(guildId, userId);
+
+        const embed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .setDescription(`You collected your weekly reward of **${AMOUNT}** coins!\nYour balance is now **${balance}** coins.`)
+            .setFooter({
+                text: `Requested by ${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL(),
+            });
+
+        await interaction.reply({ embeds: [embed] });
+    },
+};

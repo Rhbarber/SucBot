@@ -1,35 +1,45 @@
-const Discord = require("discord.js");
-const config = require('../config.json');
-const db = require("quick.db");
-const ms = require("parse-ms");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { economy, cooldowns } = require("../db");
 
-module.exports.run = async (bot, message, args) => {
-    let user = message.author;
-    let timeout = 86400000;
-    let amount = 100;
-    let daily = await db.fetch(`daily_${message.guild.id}_${user.id}`);
-    if (daily !== null && timeout - (Date.now() - daily) > 0) {
-        let time = ms(timeout - (Date.now() - daily));
+const TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+const AMOUNT  = 100;
 
-        let timeEmbed = new Discord.MessageEmbed()
-            .setColor("RANDOM")
-            .setDescription(`It seems you have already collected your daily reward.\n\n You can collect it again in ${time.hours} hour(s), ${time.minutes} minute(s) and ${time.seconds} second(s)!`)
-            .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-        message.channel.send(timeEmbed)
-    } else {
-        let moneyEmbed = new Discord.MessageEmbed()
-            .setColor("RANDOM")
-            .setDescription(`You've collected your daily reward of \`\`${amount}\`\` coins!\n\n ***Note:** You can deposit your coins by using the \`\`${config.prefix}deposit\`\` command!*`)
-            .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-        message.channel.send(moneyEmbed)
-        db.add(`money_${message.guild.id}_${user.id}`, amount)
-        db.set(`daily_${message.guild.id}_${user.id}`, Date.now())
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName("daily")
+        .setDescription("Collect your daily coin reward."),
 
+    async execute(interaction, client) {
+        const { guildId } = interaction;
+        const userId      = interaction.user.id;
+        const last        = cooldowns.get("daily", guildId, userId);
+        const remaining   = last ? TIMEOUT - (Date.now() - last) : 0;
 
-    }
-}
+        if (remaining > 0) {
+            const availableAt = `<t:${Math.floor((last + TIMEOUT) / 1000)}:R>`;
+            const embed = new EmbedBuilder()
+                .setColor(client.config.embedColor)
+                .setDescription(`You've already collected your daily reward.\nCome back ${availableAt}.`)
+                .setFooter({
+                    text: `Requested by ${interaction.user.tag}`,
+                    iconURL: interaction.user.displayAvatarURL(),
+                });
+            return interaction.reply({ embeds: [embed] });
+        }
 
-module.exports.help = {
-    name: "daily",
-    aliases: ["daily"]
-}
+        economy.addBalance(guildId, userId, AMOUNT);
+        cooldowns.set("daily", guildId, userId);
+
+        const balance = economy.getBalance(guildId, userId);
+
+        const embed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .setDescription(`You collected your daily reward of **${AMOUNT}** coins!\nYour balance is now **${balance}** coins.`)
+            .setFooter({
+                text: `Requested by ${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL(),
+            });
+
+        await interaction.reply({ embeds: [embed] });
+    },
+};

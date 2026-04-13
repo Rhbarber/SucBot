@@ -1,48 +1,71 @@
-const Discord = require("discord.js");
-const config = require('../config.json');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 
-module.exports.run = async (client, message, args) => {
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName("ban")
+        .setDescription("Bans a member from the server.")
+        .addUserOption(option =>
+            option
+                .setName("user")
+                .setDescription("The member to ban")
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option
+                .setName("reason")
+                .setDescription("Reason for the ban")
+        )
+        .addIntegerOption(option =>
+            option
+                .setName("delete_days")
+                .setDescription("Days of message history to delete (0–7)")
+                .setMinValue(0)
+                .setMaxValue(7)
+        )
+        .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
-    let NoPerms = new Discord.MessageEmbed()
-        .setDescription(`You do not have the \`\BAN_MEMBERS\` permission.`)
-        .setColor("RANDOM")
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-    if (!message.member.hasPermission("BAN_MEMBERS")) return message.channel.send(NoPerms);
-    if (args[0] == "") {
-        return;
-    }
-    let BannedUser = message.guild.member(message.mentions.users.first() || message.guild.members.cache.get(args[0]));
-    let Usage = new Discord.MessageEmbed()
-        .setDescription(`**Usage:** ${config.prefix}ban @user <optional reason>`)
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-        .setColor("RANDOM")
-    if (!BannedUser) return message.channel.send(Usage);
-    var reason = args.join(" ").slice(22);
-    if (!reason) {
-        var reason = "No reason provided"
-    }
-    let HasPerms = new Discord.MessageEmbed()
-        .setDescription(`This user has the \`\BAN_MEMBERS\` permission so they're exempt from being banned.`)
-        .setColor("RANDOM")
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-    if (BannedUser.hasPermission("BAN_MEMBERS")) return message.channel.send(HasPerms);
+    async execute(interaction, client) {
+        const target     = interaction.options.getMember("user");
+        const reason     = interaction.options.getString("reason") ?? "No reason provided.";
+        const deleteDays = interaction.options.getInteger("delete_days") ?? 0;
 
-    let BanEmbed = new Discord.MessageEmbed()
-        .setTitle(`User Banned!!`)
-        .setThumbnail(BannedUser.user.avatarURL())
-        .setColor("RANDOM")
-        .addField("User:", `${BannedUser.user.tag} (${BannedUser.user.id})`)
-        .addField("Moderator:", `${message.author.tag} (${message.author.id})`)
-        .setTimestamp()
-        .addField("Reason", reason);
+        if (!target) {
+            return interaction.reply({ content: "That user is not in this server.", ephemeral: true });
+        }
 
-    let loggingChannel = message.guild.channels.cache.find(ch => ch.name === config.modlog)
-    if (!loggingChannel) return;
-    message.guild.members.ban(BannedUser).reason;
-    message.channel.send(`${BannedUser.user.tag} Has been banned.`)
-    loggingChannel.send(BanEmbed);
-}
-module.exports.help = {
-    name: "ban",
-    aliases: ["ban"]
-}
+        // Prevent banning someone with equal or higher role
+        if (target.roles.highest.position >= interaction.member.roles.highest.position) {
+            return interaction.reply({ content: "You can't ban someone with an equal or higher role than yours.", ephemeral: true });
+        }
+
+        // Check the bot can actually ban this member
+        if (!target.bannable) {
+            return interaction.reply({ content: "I don't have permission to ban this user.", ephemeral: true });
+        }
+
+        await target.ban({ reason, deleteMessageSeconds: deleteDays * 86400 });
+
+        const embed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .setTitle("Member Banned")
+            .setThumbnail(target.user.displayAvatarURL())
+            .addFields(
+                { name: "User",      value: `${target.user.tag} (${target.user.id})` },
+                { name: "Moderator", value: `${interaction.user.tag} (${interaction.user.id})` },
+                { name: "Reason",    value: reason },
+            )
+            .setTimestamp()
+            .setFooter({
+                text: `Requested by ${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL(),
+            });
+
+        await interaction.reply({ embeds: [embed] });
+
+        // Log to the log channel if configured
+        if (client.config.logChannelId) {
+            const logChannel = await client.channels.fetch(client.config.logChannelId).catch(() => null);
+            if (logChannel?.isTextBased()) await logChannel.send({ embeds: [embed] });
+        }
+    },
+};

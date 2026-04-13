@@ -1,35 +1,64 @@
-const Discord = require("discord.js");
-const config = require('../config.json');
-module.exports.run = async (bot, message, args) => {
-    const usage = new Discord.MessageEmbed()
-        .setColor("RANDOM")
-        .setDescription(`**Usage:** ${config.prefix}ip <server ip>`)
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-    if (args.length === 0) return message.channel.send(usage)
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
-    const request = require('request')
-        , url = 'https://api.mcsrvstat.us/2/' + escape(args.join(" "))
-    request(url, (error, response, body) => {
-        if (!error && response.statusCode === 200) {
-            const Response = JSON.parse(body);
-            if (Response.debug.query == true) {
-                const embed = new Discord.MessageEmbed()
-                    .setColor("RANDOM")
-                    .setDescription(`**Server IP**: ${Response.hostname}:${Response.port}\n\n **Online Players:** ${Response.players.online}/${Response.players.max}\n\n **Server Version:** ${Response.version}\n\n **Server Software:** ${Response.software}\n\n **MOTD:**\n ${Response.motd.clean}`)
-                    .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-                    .setThumbnail(`https://api.mcsrvstat.us/icon/${Response.hostname}`)
-                message.channel.send(embed);
-            } else {
-                const error1 = new Discord.MessageEmbed()
-                    .setColor("RANDOM")
-                    .setDescription(`Server not found. Please make sure the server is turned on, and query is enabled!`)
-                    .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-                message.channel.send(error1)
-            }
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName("ip")
+        .setDescription("Shows information about a Minecraft server.")
+        .addStringOption(option =>
+            option
+                .setName("address")
+                .setDescription("Server IP address (e.g. play.hypixel.net)")
+                .setRequired(true)
+        ),
+
+    async execute(interaction, client) {
+        await interaction.deferReply();
+
+        const address = interaction.options.getString("address");
+
+        // mcsrvstat.us v3 — current API version
+        const res = await fetch(`https://api.mcsrvstat.us/3/${encodeURIComponent(address)}`);
+
+        if (!res.ok) {
+            return interaction.editReply({ content: "Could not reach the mcsrvstat API. Try again later." });
         }
-    })
-}
-module.exports.help = {
-    name: "ip",
-    aliases: ["query"]
-}
+
+        const data = await res.json();
+
+        if (!data.online) {
+            const embed = new EmbedBuilder()
+                .setColor(client.config.embedColor)
+                .setDescription(`**${address}** is offline or unreachable.\nMake sure the address is correct and the server is running.`)
+                .setFooter({
+                    text: `Requested by ${interaction.user.tag}`,
+                    iconURL: interaction.user.displayAvatarURL(),
+                });
+            return interaction.editReply({ embeds: [embed] });
+        }
+
+        const motd    = data.motd?.clean?.join("\n") ?? "N/A";
+        const version = data.version ?? "Unknown";
+        const online  = data.players?.online ?? 0;
+        const max     = data.players?.max ?? 0;
+        const host    = data.hostname ?? address;
+        const port    = data.port ?? 25565;
+        const software = data.software ?? "Vanilla";
+
+        const embed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .setTitle(`${host}:${port}`)
+            .addFields(
+                { name: "Players",  value: `${online}/${max}`,  inline: true },
+                { name: "Version",  value: version,             inline: true },
+                { name: "Software", value: software,            inline: true },
+                { name: "MOTD",     value: `\`\`\`${motd}\`\`\`` },
+            )
+            .setThumbnail(`https://api.mcsrvstat.us/icon/${encodeURIComponent(address)}`)
+            .setFooter({
+                text: `Requested by ${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL(),
+            });
+
+        await interaction.editReply({ embeds: [embed] });
+    },
+};

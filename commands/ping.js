@@ -1,22 +1,42 @@
-const Discord = require("discord.js")
-const moment = require("moment")
-require("moment-duration-format")
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const dayjs = require("dayjs");
+const duration = require("dayjs/plugin/duration");
 
-module.exports.run = async (bot, message, args) => {
-    const duration = moment.duration(bot.uptime).format(" D [Days], H [Hours], m [Minutes], s [Seconds]");
-    let botping = new Date() - message.createdAt;
+dayjs.extend(duration);
 
-    let pingembed = new Discord.MessageEmbed()
-        .setColor("RANDOM")
-        .addField('API Ping:', Math.floor(bot.ws.ping) + ' ms', true)
-        .addField('Bot Ping:', Math.floor(botping) + ' ms', true)
-        .addField('RAM Usage:', (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2) + ' MB', true)
-        .addField("Uptime:", `${duration}`)
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-    message.channel.send(pingembed);
-}
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName("ping")
+        .setDescription("Shows the bot's latency, RAM usage and uptime."),
 
-module.exports.help = {
-    name: "ping",
-    aliases: ["pong"]
-}
+    async execute(interaction, client) {
+        const sent = await interaction.reply({ content: "Pinging...", fetchReply: true });
+
+        const roundtrip = sent.createdTimestamp - interaction.createdTimestamp;
+        const ws        = client.ws.ping;
+        const ram       = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
+
+        const dur = dayjs.duration(client.uptime);
+        const uptime = [
+            dur.days()    && `${dur.days()}d`,
+            dur.hours()   && `${dur.hours()}h`,
+            dur.minutes() && `${dur.minutes()}m`,
+            `${dur.seconds()}s`,
+        ].filter(Boolean).join(" ");
+
+        const embed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .addFields(
+                { name: "Roundtrip", value: `${roundtrip}ms`, inline: true },
+                { name: "WebSocket", value: `${ws}ms`,        inline: true },
+                { name: "RAM Usage", value: `${ram} MB`,      inline: true },
+                { name: "Uptime",    value: uptime,           inline: true },
+            )
+            .setFooter({
+                text: `Requested by ${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL(),
+            });
+
+        await interaction.editReply({ content: "", embeds: [embed] });
+    },
+};

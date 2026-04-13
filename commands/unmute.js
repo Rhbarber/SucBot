@@ -1,52 +1,60 @@
-const Discord = require("discord.js");
-const config = require('../config.json')
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 
-module.exports.run = async (bot, message, args) => {
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName("unmute")
+        .setDescription("Removes a timeout from a member.")
+        .addUserOption(option =>
+            option
+                .setName("user")
+                .setDescription("The member to remove the timeout from")
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option
+                .setName("reason")
+                .setDescription("Reason for removing the timeout")
+        )
+        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
 
-    let NoPerms = new Discord.MessageEmbed()
-        .setDescription(`You do not have the \`\MUTE_MEMBERS\` permission.`)
-        .setColor("RANDOM")
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-    if (!message.member.hasPermission("MUTE_MEMBERS")) return message.channel.send(NoPerms);
-    if (args[0] == "") {
-        return;
-    }
+    async execute(interaction, client) {
+        const target = interaction.options.getMember("user");
+        const reason = interaction.options.getString("reason") ?? "No reason provided.";
 
-    let muterole = message.guild.roles.cache.find(x => x.name === config.mutedrole);
-    let UnMutedUser = message.guild.member(message.mentions.users.first() || message.guild.members.cache.get(args[0]));
-    let Usage = new Discord.MessageEmbed()
-        .setDescription(`**Usage:** ${config.prefix}unmute @user <optional reason>`)
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-        .setColor("RANDOM")
-    if (!UnMutedUser) return message.channel.send(Usage);
-    var reason = args.join(" ").slice(22);
-    if (!reason) {
-        var reason = "No reason provided"
-    }
+        if (!target) {
+            return interaction.reply({ content: "That user is not in this server.", ephemeral: true });
+        }
 
-    let HasPerms = new Discord.MessageEmbed()
-        .setDescription(`This user has the \`\MUTE_MEMBERS\` permission so they're exempt from being unmuted.`)
-        .setColor("RANDOM")
-        .setFooter(`Requested By: ${message.author.tag} | ID: ${message.author.id}`, message.author.avatarURL())
-    if (UnMutedUser.hasPermission("MUTE_MEMBERS")) return message.channel.send(HasPerms);
+        if (!target.isCommunicationDisabled()) {
+            return interaction.reply({ content: "That user is not currently timed out.", ephemeral: true });
+        }
 
-    let UnMuteEmbed = new Discord.MessageEmbed()
-        .setTitle(`User UnMuted!`)
-        .setThumbnail(UnMutedUser.user.avatarURL())
-        .setColor("RANDOM")
-        .addField("User:", `${UnMutedUser.user.tag} (${UnMutedUser.user.id})`)
-        .addField("Moderator:", `${message.author.tag} (${message.author.id})`)
-        .setTimestamp()
-        .addField("Reason", reason);
+        if (!target.moderatable) {
+            return interaction.reply({ content: "I don't have permission to modify this user's timeout.", ephemeral: true });
+        }
 
-    let loggingChannel = message.guild.channels.cache.find(ch => ch.name === config.modlog)
-    if (!loggingChannel) return;
-    await (UnMutedUser.roles.remove(muterole.id));
-    message.channel.send(`${UnMutedUser.user.tag} Has been unmuted.`)
-    loggingChannel.send(UnMuteEmbed);
-}
+        await target.timeout(null, reason);
 
-module.exports.help = {
-    name: "unmute",
-    aliases: ["unmute"]
-}
+        const embed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .setTitle("Timeout Removed")
+            .setThumbnail(target.user.displayAvatarURL())
+            .addFields(
+                { name: "User",      value: `${target.user.tag} (${target.user.id})` },
+                { name: "Moderator", value: `${interaction.user.tag} (${interaction.user.id})` },
+                { name: "Reason",    value: reason },
+            )
+            .setTimestamp()
+            .setFooter({
+                text: `Requested by ${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL(),
+            });
+
+        await interaction.reply({ embeds: [embed] });
+
+        if (client.config.logChannelId) {
+            const logChannel = await client.channels.fetch(client.config.logChannelId).catch(() => null);
+            if (logChannel?.isTextBased()) await logChannel.send({ embeds: [embed] });
+        }
+    },
+};

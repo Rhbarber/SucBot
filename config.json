@@ -4,5 +4,15 @@
     "ownerId": "YOUR_DISCORD_USER_ID_HERE",
     "embedColor": "#5865F2",
     "cooldown": 3,
-    "logChannelId": "YOUR_LOG_CHANNEL_ID_HERE"
+    "logChannelId": "YOUR_LOG_CHANNEL_ID_HERE",
+    "database": {
+        "type": "sqlite",
+        "mysql": {
+            "host": "localhost",
+            "port": 3306,
+            "user": "your_user",
+            "password": "your_password",
+            "database": "sucbot"
+        }
+    }
 }

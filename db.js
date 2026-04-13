@@ -180,11 +180,12 @@ function buildMySQLAdapter() {
                 );
             },
             async getLeaderboard(guildId, limit = 10) {
+                const safeLimit = Math.max(1, Math.min(100, parseInt(limit)));
                 const [rows] = await pool.execute(
                     `SELECT \`key\`, value FROM economy
                      WHERE \`key\` LIKE ?
-                     ORDER BY value DESC LIMIT ?`,
-                    [`money_${guildId}_%`, limit]
+                     ORDER BY value DESC LIMIT ${safeLimit}`,
+                    [`money_${guildId}_%`]
                 );
                 return rows;
             },

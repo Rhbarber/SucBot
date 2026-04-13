@@ -119,14 +119,22 @@ module.exports = {
             const summoner = await summonerRes.json();
 
             // Get ranked data
-            const rankedRes = await fetch(
+            const rankedRes  = await fetch(
                 `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summoner.id}`,
                 { headers }
             );
             const rankedData = await rankedRes.json();
 
-            const soloQueue  = rankedData.find(e => e.queueType === "RANKED_SOLO_5x5");
-            const flexQueue  = rankedData.find(e => e.queueType === "RANKED_FLEX_SR");
+            if (!Array.isArray(rankedData)) {
+                const status = rankedData?.status;
+                console.error("[LOL] Unexpected ranked response:", rankedData);
+                return interaction.editReply({
+                    content: `❌ Riot API error${status ? ` ${status.status_code}: ${status.message}` : " — unexpected response from ranked endpoint."}`,
+                });
+            }
+
+            const soloQueue = rankedData.find(e => e.queueType === "RANKED_SOLO_5x5");
+            const flexQueue = rankedData.find(e => e.queueType === "RANKED_FLEX_SR");
 
             // Get champion mastery top 3
             const masteryRes = await fetch(

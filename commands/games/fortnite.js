@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
-const PLATFORM_EMOJIS = { pc: "🖥️", psn: "🎮", xbl: "🎮" };
+const PLATFORM_EMOJIS = { epic: "🖥️", psn: "🎮", xbl: "🎮" };
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,9 +17,9 @@ module.exports = {
                 .setName("platform")
                 .setDescription("Platform (default: PC)")
                 .addChoices(
-                    { name: "PC",            value: "pc"  },
-                    { name: "PlayStation",   value: "psn" },
-                    { name: "Xbox",          value: "xbl" },
+                    { name: "PC / Epic",     value: "epic" },
+                    { name: "PlayStation",   value: "psn"  },
+                    { name: "Xbox",          value: "xbl"  },
                 )
         ),
 
@@ -29,14 +29,19 @@ module.exports = {
         const username  = interaction.options.getString("username");
         const platform  = interaction.options.getString("platform") ?? "pc";
 
+        const apiKey = process.env.FORTNITE_API_KEY;
+        if (!apiKey) {
+            return interaction.editReply({ content: "❌ `FORTNITE_API_KEY` is not set in the `.env` file." });
+        }
+
         try {
-            // fortnite-api.com — free, no key required
             const res = await fetch(
-                `https://fortnite-api.com/v2/stats/br/v2?name=${encodeURIComponent(username)}&accountType=${platform}&image=all`
+                `https://fortnite-api.com/v2/stats/br/v2?name=${encodeURIComponent(username)}&accountType=${platform}&image=all`,
+                { headers: { Authorization: apiKey } }
             );
 
             if (res.status === 404) {
-                return interaction.editReply({ content: `❌ Player \`${username}\` not found on **${platform.toUpperCase()}**.\nMake sure their stats are public in Fortnite settings.` });
+                return interaction.editReply({ content: `❌ Player \`${username}\` not found.\nMake sure the username is correct and their stats are set to public in Fortnite settings.` });
             }
             if (!res.ok) {
                 return interaction.editReply({ content: "❌ Could not reach the Fortnite API. Try again later." });

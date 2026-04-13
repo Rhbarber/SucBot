@@ -25,6 +25,12 @@ Create a `.env` file at the root of the project (you can copy `.env.example` as 
 TOKEN=your_bot_token_here
 CLIENT_ID=your_client_id_here
 STATUS=with discord.js v14
+
+# Required for /lol command
+RIOT_API_KEY=your_riot_api_key_here
+
+# Required for /fortnite command
+FORTNITE_API_KEY=your_fortnite_api_key_here
 ```
 
 | Variable | Required | Description |
@@ -32,6 +38,8 @@ STATUS=with discord.js v14
 | `TOKEN` | ✅ | Your bot's token. Found at [Discord Developer Portal](https://discord.com/developers/applications) → your app → **Bot** → **Token**. |
 | `CLIENT_ID` | ✅ | Your application's ID. Found under **General Information** → **Application ID**. |
 | `STATUS` | ❌ | Activity status text displayed by the bot. Defaults to `with discord.js v14` if not set. |
+| `RIOT_API_KEY` | ⚠️ | Required for `/lol`. Get a free key at [developer.riotgames.com](https://developer.riotgames.com). Development keys expire every 24h; apply for a Personal API Key for a permanent one. |
+| `FORTNITE_API_KEY` | ⚠️ | Required for `/fortnite`. Get a free key at [dash.fortnite-api.com/account](https://dash.fortnite-api.com/account) by logging in with Discord. |
 
 ---
 
@@ -103,7 +111,7 @@ module.exports = {
 };
 ```
 
-## Changes from the original
+## Changes from the original made by [AshiePleb](https://github.com/AshiePleb)
 
 | Before | Now |
 |---|---|
@@ -154,15 +162,15 @@ module.exports = {
 | Command | Description | Requires |
 |---|---|---|
 | `/lol` | League of Legends profile — rank, W/L, KDA, champion mastery | `RIOT_API_KEY` in `.env` |
-| `/fortnite` | Fortnite stats — wins, K/D, win rate across all modes | Nothing |
+| `/fortnite` | Fortnite stats — wins, K/D, win rate across all modes | `FORTNITE_API_KEY` in `.env` |
+| `/skin` | Minecraft player skin head | Nothing |
+| `/ip` | Minecraft server info | Nothing |
 
 ### 🐾 Fun
 | Command | Description |
 |---|---|
 | `/dog` | Random dog picture |
 | `/cat` | Random cat picture |
-| `/skin` | Minecraft player skin head |
-| `/ip` | Minecraft server info |
 
 ### 🔧 Owner Only
 | Command | Description |
@@ -178,3 +186,8 @@ module.exports = {
 2. A **Development API Key** is generated automatically — it's free but expires every 24 hours
 3. For a permanent key, submit a **Personal API Key** application (free, takes a few days)
 4. Add the key to your `.env` as `RIOT_API_KEY`
+
+### Fortnite-API (Fortnite)
+1. Go to [dash.fortnite-api.com/account](https://dash.fortnite-api.com/account) and log in with Discord
+2. Generate a free API key from the dashboard
+3. Add the key to your `.env` as `FORTNITE_API_KEY`

@@ -38,11 +38,16 @@ function buildSQLiteAdapter() {
                     .get(`${type}_${guildId}_${userId}`);
                 return row?.value ?? null;
             },
-            async set(type, guildId, userId) {
-                db.prepare(`
-                    INSERT INTO cooldowns (key, value) VALUES (?, ?)
-                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
-                `).run(`${type}_${guildId}_${userId}`, Date.now());
+            async set(type, guildId, userId, value = Date.now()) {
+                if (value === 0) {
+                    db.prepare("DELETE FROM cooldowns WHERE key = ?")
+                        .run(`${type}_${guildId}_${userId}`);
+                } else {
+                    db.prepare(`
+                        INSERT INTO cooldowns (key, value) VALUES (?, ?)
+                        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                    `).run(`${type}_${guildId}_${userId}`, value);
+                }
             },
         },
     };
@@ -104,12 +109,19 @@ function buildMySQLAdapter() {
                 );
                 return rows[0]?.value ?? null;
             },
-            async set(type, guildId, userId) {
-                await pool.execute(
-                    `INSERT INTO cooldowns (\`key\`, value) VALUES (?, ?)
-                     ON DUPLICATE KEY UPDATE value = VALUES(value)`,
-                    [`${type}_${guildId}_${userId}`, Date.now()]
-                );
+            async set(type, guildId, userId, value = Date.now()) {
+                if (value === 0) {
+                    await pool.execute(
+                        "DELETE FROM cooldowns WHERE `key` = ?",
+                        [`${type}_${guildId}_${userId}`]
+                    );
+                } else {
+                    await pool.execute(
+                        `INSERT INTO cooldowns (\`key\`, value) VALUES (?, ?)
+                         ON DUPLICATE KEY UPDATE value = VALUES(value)`,
+                        [`${type}_${guildId}_${userId}`, value]
+                    );
+                }
             },
         },
     };

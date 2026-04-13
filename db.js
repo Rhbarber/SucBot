@@ -20,12 +20,12 @@ function buildSQLiteAdapter() {
 
     return {
         economy: {
-            getBalance(guildId, userId) {
+            async getBalance(guildId, userId) {
                 const row = db.prepare("SELECT value FROM economy WHERE key = ?")
                     .get(`money_${guildId}_${userId}`);
                 return row?.value ?? 0;
             },
-            addBalance(guildId, userId, amount) {
+            async addBalance(guildId, userId, amount) {
                 db.prepare(`
                     INSERT INTO economy (key, value) VALUES (?, ?)
                     ON CONFLICT(key) DO UPDATE SET value = value + excluded.value
@@ -33,12 +33,12 @@ function buildSQLiteAdapter() {
             },
         },
         cooldowns: {
-            get(type, guildId, userId) {
+            async get(type, guildId, userId) {
                 const row = db.prepare("SELECT value FROM cooldowns WHERE key = ?")
                     .get(`${type}_${guildId}_${userId}`);
                 return row?.value ?? null;
             },
-            set(type, guildId, userId) {
+            async set(type, guildId, userId) {
                 db.prepare(`
                     INSERT INTO cooldowns (key, value) VALUES (?, ?)
                     ON CONFLICT(key) DO UPDATE SET value = excluded.value

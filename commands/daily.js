@@ -12,14 +12,14 @@ module.exports = {
     async execute(interaction, client) {
         const { guildId } = interaction;
         const userId      = interaction.user.id;
-        const last        = cooldowns.get("daily", guildId, userId);
+        const last        = await cooldowns.get("daily", guildId, userId);
         const remaining   = last ? TIMEOUT - (Date.now() - last) : 0;
 
         if (remaining > 0) {
             const availableAt = `<t:${Math.floor((last + TIMEOUT) / 1000)}:R>`;
             const embed = new EmbedBuilder()
                 .setColor(client.config.embedColor)
-                .setDescription(`You've already collected your daily reward.\nCome back ${availableAt}.`)
+                .setDescription(`⏳ You've already collected your daily reward.\nCome back ${availableAt}.`)
                 .setFooter({
                     text: `Requested by ${interaction.user.tag}`,
                     iconURL: interaction.user.displayAvatarURL(),
@@ -27,18 +27,20 @@ module.exports = {
             return interaction.reply({ embeds: [embed] });
         }
 
-        economy.addBalance(guildId, userId, AMOUNT);
-        cooldowns.set("daily", guildId, userId);
-
-        const balance = economy.getBalance(guildId, userId);
+        await economy.addBalance(guildId, userId, AMOUNT);
+        await cooldowns.set("daily", guildId, userId);
+        const balance = await economy.getBalance(guildId, userId);
 
         const embed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setDescription(`You collected your daily reward of **${AMOUNT}** coins!\nYour balance is now **${balance}** coins.`)
+            .setTitle("🪙 Daily Reward Collected!")
+            .setDescription(`You received your daily reward of **${AMOUNT}** 🪙\nYour new balance is **${balance}** 🪙`)
+            .setThumbnail(interaction.user.displayAvatarURL())
             .setFooter({
                 text: `Requested by ${interaction.user.tag}`,
                 iconURL: interaction.user.displayAvatarURL(),
-            });
+            })
+            .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
     },

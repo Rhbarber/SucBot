@@ -4,16 +4,16 @@ const { economy, cooldowns } = require("../db");
 const TIMEOUT = 12 * 60 * 60 * 1000; // 12 hours
 
 const JOBS = [
-    { title: "Programmer",       pay: [200, 500] },
-    { title: "Builder",          pay: [100, 350] },
-    { title: "Chef",             pay: [150, 400] },
-    { title: "Mechanic",         pay: [150, 400] },
-    { title: "Taxi Driver",      pay: [80,  250] },
-    { title: "Doctor",           pay: [300, 600] },
-    { title: "Teacher",          pay: [120, 300] },
-    { title: "Streamer",         pay: [50,  700] },
-    { title: "Security Guard",   pay: [100, 250] },
-    { title: "Graphic Designer", pay: [200, 450] },
+    { title: "Programmer",       emoji: "💻", pay: [200, 500] },
+    { title: "Builder",          emoji: "🏗️",  pay: [100, 350] },
+    { title: "Chef",             emoji: "👨‍🍳", pay: [150, 400] },
+    { title: "Mechanic",         emoji: "🔧", pay: [150, 400] },
+    { title: "Taxi Driver",      emoji: "🚕", pay: [80,  250] },
+    { title: "Doctor",           emoji: "🩺", pay: [300, 600] },
+    { title: "Teacher",          emoji: "📚", pay: [120, 300] },
+    { title: "Streamer",         emoji: "🎮", pay: [50,  700] },
+    { title: "Security Guard",   emoji: "🛡️",  pay: [100, 250] },
+    { title: "Graphic Designer", emoji: "🎨", pay: [200, 450] },
 ];
 
 module.exports = {
@@ -24,14 +24,14 @@ module.exports = {
     async execute(interaction, client) {
         const { guildId } = interaction;
         const userId      = interaction.user.id;
-        const last        = cooldowns.get("work", guildId, userId);
+        const last        = await cooldowns.get("work", guildId, userId);
         const remaining   = last ? TIMEOUT - (Date.now() - last) : 0;
 
         if (remaining > 0) {
             const availableAt = `<t:${Math.floor((last + TIMEOUT) / 1000)}:R>`;
             const embed = new EmbedBuilder()
                 .setColor(client.config.embedColor)
-                .setDescription(`You've already worked today.\nYou can work again ${availableAt}.`)
+                .setDescription(`⏳ You've already worked today.\nYou can work again ${availableAt}.`)
                 .setFooter({
                     text: `Requested by ${interaction.user.tag}`,
                     iconURL: interaction.user.displayAvatarURL(),
@@ -42,18 +42,20 @@ module.exports = {
         const job    = JOBS[Math.floor(Math.random() * JOBS.length)];
         const amount = Math.floor(Math.random() * (job.pay[1] - job.pay[0] + 1)) + job.pay[0];
 
-        economy.addBalance(guildId, userId, amount);
-        cooldowns.set("work", guildId, userId);
-
-        const balance = economy.getBalance(guildId, userId);
+        await economy.addBalance(guildId, userId, amount);
+        await cooldowns.set("work", guildId, userId);
+        const balance = await economy.getBalance(guildId, userId);
 
         const embed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setDescription(`You worked as a **${job.title}** and earned **${amount}** coins!\nYour balance is now **${balance}** coins.`)
+            .setTitle(`${job.emoji} Work Complete!`)
+            .setDescription(`You worked as a **${job.title}** and earned **${amount}** 🪙\nYour new balance is **${balance}** 🪙`)
+            .setThumbnail(interaction.user.displayAvatarURL())
             .setFooter({
                 text: `Requested by ${interaction.user.tag}`,
                 iconURL: interaction.user.displayAvatarURL(),
-            });
+            })
+            .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
     },

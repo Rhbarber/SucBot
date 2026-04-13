@@ -8,10 +8,8 @@ module.exports = {
     async execute(interaction, client) {
         await interaction.deferReply();
 
-        const res = await fetch("https://cataas.com/cat?json=true");
-        const data = await res.json();
-
-        const imageUrl = `https://cataas.com${data.url}`;
+        // direct image endpoint avoids malformed URL issues
+        const imageUrl = `https://cataas.com/cat?${Date.now()}`;
 
         const embed = new EmbedBuilder()
             .setColor(client.config.embedColor)

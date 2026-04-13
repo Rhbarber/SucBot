@@ -154,7 +154,7 @@ client.on("interactionCreate", async interaction => {
 });
 
 // ── Ready ─────────────────────────────────────────────────────────────────────
-client.once("ready", async () => {
+client.once("clientReady", async () => {
     console.log(`[BOT] Logged in as ${client.user.tag}`);
     await client.user.setActivity(status);
     await deployCommands();

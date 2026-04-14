@@ -176,21 +176,48 @@ module.exports = {
             const soloQueue = rankedData.find(e => e.queueType === "RANKED_SOLO_5x5");
             const flexQueue = rankedData.find(e => e.queueType === "RANKED_FLEX_SR");
 
-            // Fetch champion map, mastery, and live game status in parallel
-            const [champMap, masteryRes, spectatorRes] = await Promise.all([
+            // Fetch champion map, mastery, and last match in parallel
+            const [champMap, masteryRes, matchIdsRes] = await Promise.all([
                 getChampionMap(),
                 fetch(
                     `https://${platform}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=3`,
                     { headers }
                 ),
                 fetch(
-                    `https://${platform}.api.riotgames.com/lol/spectator/v5/active-games/by-puuid/${puuid}`,
+                    `https://${region}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?count=1`,
                     { headers }
                 ),
             ]);
 
-            const masteries  = await masteryRes.json();
-            const liveGame   = spectatorRes.status === 200 ? await spectatorRes.json() : null;
+            const masteries = await masteryRes.json();
+            const matchIds  = matchIdsRes.ok ? await matchIdsRes.json() : [];
+
+            // Fetch last played game details
+            let lastGame = null;
+            if (Array.isArray(matchIds) && matchIds.length) {
+                const matchRes = await fetch(
+                    `https://${region}.api.riotgames.com/lol/match/v5/matches/${matchIds[0]}`,
+                    { headers }
+                );
+                if (matchRes.ok) {
+                    const matchData   = await matchRes.json();
+                    const info        = matchData?.info;
+                    const participant = info?.participants?.find(p => p.puuid === puuid);
+                    if (info && participant) {
+                        lastGame = {
+                            champion:  participant.championName,
+                            win:       participant.win,
+                            kills:     participant.kills,
+                            deaths:    participant.deaths,
+                            assists:   participant.assists,
+                            cs:        participant.totalMinionsKilled + participant.neutralMinionsKilled,
+                            duration:  Math.floor(info.gameDuration / 60),
+                            gameMode:  info.gameMode,
+                            timestamp: info.gameEndTimestamp,
+                        };
+                    }
+                }
+            }
 
             const formatRank = (entry) => {
                 if (!entry) return "Unranked";
@@ -226,18 +253,23 @@ module.exports = {
                 });
             }
 
-            // Only show live game field if the player is currently in a game
-            if (liveGame && !liveGame.status) {
-                const gameMode   = liveGame.gameMode ?? "Unknown";
-                const gameLength = Math.floor((liveGame.gameLength ?? 0) / 60);
-                const participant = liveGame.participants?.find(p => p.puuid === puuid);
-                const liveChamp  = participant
-                    ? (champMap[String(participant.championId)] ?? `Champion ${participant.championId}`)
+
+
+            if (lastGame) {
+                const result    = lastGame.win ? "✅ Win" : "❌ Loss";
+                const kda       = `${lastGame.kills}/${lastGame.deaths}/${lastGame.assists}`;
+                const kdaRatio  = lastGame.deaths === 0
+                    ? "Perfect"
+                    : ((lastGame.kills + lastGame.assists) / lastGame.deaths).toFixed(2);
+                const playedAt  = lastGame.timestamp
+                    ? `<t:${Math.floor(lastGame.timestamp / 1000)}:R>`
                     : "Unknown";
 
                 embed.addFields({
-                    name: "🔴 Currently In Game",
-                    value: `**${liveChamp}** in ${gameMode} — ${gameLength}m elapsed`,
+                    name: "🕹️ Last Game",
+                    value: `${result} · **${lastGame.champion}** · ${lastGame.gameMode}
+` +
+                           `KDA: **${kda}** (${kdaRatio}) · CS: **${lastGame.cs}** · ${lastGame.duration}m · ${playedAt}`,
                 });
             }
 

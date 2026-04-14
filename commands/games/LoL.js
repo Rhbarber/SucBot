@@ -47,14 +47,16 @@ let championMap   = null; // { "99": "Lux", "34": "Anivia", ... }
 let championMapTs = 0;
 const CHAMPION_MAP_TTL = 6 * 60 * 60 * 1000; // refresh every 6 hours
 
+let ddVersion = null; // cached DDragon version string
+
 async function getChampionMap() {
     if (championMap && Date.now() - championMapTs < CHAMPION_MAP_TTL) return championMap;
 
     const versionsRes = await fetch("https://ddragon.leagueoflegends.com/api/versions.json");
     const versions    = await versionsRes.json();
-    const latest      = versions[0];
+    ddVersion         = versions[0];
 
-    const champRes  = await fetch(`https://ddragon.leagueoflegends.com/cdn/${latest}/data/en_US/champion.json`);
+    const champRes  = await fetch(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/champion.json`);
     const champData = await champRes.json();
 
     // Build a map of numeric key → champion name
@@ -202,7 +204,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor(tierColor)
                 .setTitle(`${gameName}${tagLine ? `#${tagLine}` : ""} — ${regionKey.toUpperCase()}`)
-                .setThumbnail(`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${summoner.profileIconId}.png`)
+                .setThumbnail(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${summoner.profileIconId}.png`)
                 .addFields(
                     { name: "🎮 Level",       value: `${summoner.summonerLevel}`,    inline: true },
                     { name: "📊 Solo/Duo",    value: formatRank(soloQueue),          inline: false },

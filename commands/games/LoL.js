@@ -88,8 +88,31 @@ module.exports = {
         try {
             let puuid, gameName, tagLine;
 
-            // Support both "Name#TAG" (Riot ID) and legacy summoner name
-            if (input.includes("#")) {
+            // Step 1 — resolve input to a PUUID via the account endpoint
+            // Always use Name#TAG format; if no tag given, default to the platform tag
+            if (!input.includes("#")) {
+                // Legacy name lookup: get summoner first, then resolve to Riot ID
+                const summonerRes = await fetch(
+                    `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-name/${encodeURIComponent(input)}`,
+                    { headers }
+                );
+                if (!summonerRes.ok) return interaction.editReply({ content: `❌ Summoner \`${input}\` not found on **${regionKey.toUpperCase()}**.` });
+                const summoner = await summonerRes.json();
+                puuid = summoner.puuid;
+
+                // Resolve PUUID → Riot ID for display
+                const accountRes = await fetch(
+                    `https://${region}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
+                    { headers }
+                );
+                if (accountRes.ok) {
+                    const account = await accountRes.json();
+                    gameName = account.gameName;
+                    tagLine  = account.tagLine;
+                } else {
+                    gameName = summoner.name;
+                }
+            } else {
                 [gameName, tagLine] = input.split("#");
                 const accountRes = await fetch(
                     `https://${region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
@@ -100,27 +123,19 @@ module.exports = {
                 puuid    = account.puuid;
                 gameName = account.gameName;
                 tagLine  = account.tagLine;
-            } else {
-                const summonerRes = await fetch(
-                    `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-name/${encodeURIComponent(input)}`,
-                    { headers }
-                );
-                if (!summonerRes.ok) return interaction.editReply({ content: `❌ Summoner \`${input}\` not found on **${regionKey.toUpperCase()}**.` });
-                const summoner = await summonerRes.json();
-                puuid    = summoner.puuid;
-                gameName = summoner.name;
             }
 
-            // Get summoner data by PUUID
+            // Step 2 — get summoner profile by PUUID (single source of truth)
             const summonerRes = await fetch(
                 `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`,
                 { headers }
             );
+            if (!summonerRes.ok) return interaction.editReply({ content: `❌ Could not find a League of Legends account for this player on **${regionKey.toUpperCase()}**.` });
             const summoner = await summonerRes.json();
 
-            // Get ranked data
+            // Step 3 — get ranked data using PUUID (avoids ID mismatch issues)
             const rankedRes  = await fetch(
-                `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summoner.id}`,
+                `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}`,
                 { headers }
             );
             const rankedData = await rankedRes.json();

@@ -184,7 +184,7 @@ module.exports = {
                     { headers }
                 ),
                 fetch(
-                    `https://${platform}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${summoner.id}`,
+                    `https://${platform}.api.riotgames.com/lol/spectator/v5/active-games/by-puuid/${puuid}`,
                     { headers }
                 ),
             ]);

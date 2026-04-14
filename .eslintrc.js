@@ -9,15 +9,11 @@ module.exports = {
     },
     extends: "eslint:recommended",
     rules: {
-        // Catch common mistakes
-        "no-unused-vars":    ["warn", { argsIgnorePattern: "^_" }],
-        "no-console":         "off",   // console.log is intentional in a bot
-        "no-process-exit":    "warn",
-        "no-await-in-loop":   "warn",
-
-        // Style
-        "eqeqeq":             ["error", "always"],
-        "prefer-const":       "warn",
-        "no-var":             "error",
+        "no-unused-vars":  ["warn", { argsIgnorePattern: "^_" }],
+        "no-console":      "off",
+        "no-await-in-loop": "error",
+        "eqeqeq":          ["error", "always"],
+        "prefer-const":    "warn",
+        "no-var":          "error",
     },
 };

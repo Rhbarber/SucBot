@@ -274,6 +274,5 @@ if (type === "mysql") {
     console.log("[DB] Using SQLite adapter.");
     module.exports = buildSQLiteAdapter();
 } else {
-    console.error(`[DB] Unknown database type "${type}" in config.json. Expected "sqlite" or "mysql".`);
-    process.exit(1);
+    throw new Error(`[DB] Unknown database type "${type}" in config.json. Expected "sqlite" or "mysql".`);
 }

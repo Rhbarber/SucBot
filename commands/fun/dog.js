@@ -1,5 +1,17 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
+const IMAGE_REGEX = /\.(jpg|jpeg|png|gif|webp)$/i;
+const MAX_ATTEMPTS = 5;
+
+// Fetch a random dog image URL, retrying if a video is returned
+async function fetchDogImage(attempts = 0) {
+    if (attempts >= MAX_ATTEMPTS) return null;
+    const res  = await fetch("https://random.dog/woof.json");
+    const data = await res.json();
+    if (IMAGE_REGEX.test(data.url)) return data.url;
+    return fetchDogImage(attempts + 1);
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("dog")
@@ -8,23 +20,10 @@ module.exports = {
     async execute(interaction, client) {
         await interaction.deferReply();
 
-        let imageUrl = null;
-
-        // Retry up to 5 times because random.dog may return videos
-        for (let i = 0; i < 5; i++) {
-            const res = await fetch("https://random.dog/woof.json");
-            const data = await res.json();
-
-            if (/\.(jpg|jpeg|png|gif|webp)$/i.test(data.url)) {
-                imageUrl = data.url;
-                break;
-            }
-        }
+        const imageUrl = await fetchDogImage();
 
         if (!imageUrl) {
-            return interaction.editReply({
-                content: "Could not fetch a dog image. Please try again."
-            });
+            return interaction.editReply({ content: "Couldn't find a dog image after several attempts. Try again!" });
         }
 
         const embed = new EmbedBuilder()

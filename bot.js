@@ -19,8 +19,7 @@ const clientId = process.env.CLIENT_ID;
 const status   = process.env.STATUS ?? "with discord.js v14";
 
 if (!token || !clientId) {
-    console.error("[ERROR] TOKEN and CLIENT_ID must be set in your .env file.");
-    process.exit(1);
+    throw new Error("[ERROR] TOKEN and CLIENT_ID must be set in your .env file.");
 }
 
 // ── Client ───────────────────────────────────────────────────────────────────

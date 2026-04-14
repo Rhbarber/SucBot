@@ -42,6 +42,29 @@ const REGIONS = {
     ru:   { platform: "ru",   region: "europe"   },
 };
 
+// ── Champion map cache (id → name) ───────────────────────────────────────────
+let championMap   = null; // { "99": "Lux", "34": "Anivia", ... }
+let championMapTs = 0;
+const CHAMPION_MAP_TTL = 6 * 60 * 60 * 1000; // refresh every 6 hours
+
+async function getChampionMap() {
+    if (championMap && Date.now() - championMapTs < CHAMPION_MAP_TTL) return championMap;
+
+    const versionsRes = await fetch("https://ddragon.leagueoflegends.com/api/versions.json");
+    const versions    = await versionsRes.json();
+    const latest      = versions[0];
+
+    const champRes  = await fetch(`https://ddragon.leagueoflegends.com/cdn/${latest}/data/en_US/champion.json`);
+    const champData = await champRes.json();
+
+    // Build a map of numeric key → champion name
+    championMap   = Object.fromEntries(
+        Object.values(champData.data).map(c => [c.key, c.name])
+    );
+    championMapTs = Date.now();
+    return championMap;
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("lol")
@@ -151,12 +174,21 @@ module.exports = {
             const soloQueue = rankedData.find(e => e.queueType === "RANKED_SOLO_5x5");
             const flexQueue = rankedData.find(e => e.queueType === "RANKED_FLEX_SR");
 
-            // Get champion mastery top 3
-            const masteryRes = await fetch(
-                `https://${platform}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=3`,
-                { headers }
-            );
-            const masteries = await masteryRes.json();
+            // Fetch champion map, mastery, and live game status in parallel
+            const [champMap, masteryRes, spectatorRes] = await Promise.all([
+                getChampionMap(),
+                fetch(
+                    `https://${platform}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=3`,
+                    { headers }
+                ),
+                fetch(
+                    `https://${platform}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${summoner.id}`,
+                    { headers }
+                ),
+            ]);
+
+            const masteries  = await masteryRes.json();
+            const liveGame   = spectatorRes.status === 200 ? await spectatorRes.json() : null;
 
             const formatRank = (entry) => {
                 if (!entry) return "Unranked";
@@ -182,12 +214,28 @@ module.exports = {
                 })
                 .setTimestamp();
 
-            if (masteries.length) {
+            if (Array.isArray(masteries) && masteries.length) {
                 embed.addFields({
                     name: "🏆 Top Champion Masteries",
-                    value: masteries.map((m, i) =>
-                        `${["🥇","🥈","🥉"][i]} Champion ID ${m.championId} — Level ${m.championLevel} (${m.championPoints.toLocaleString()} pts)`
-                    ).join("\n"),
+                    value: masteries.map((m, i) => {
+                        const name = champMap[String(m.championId)] ?? `Champion ${m.championId}`;
+                        return `${["🥇","🥈","🥉"][i]} **${name}** — Level ${m.championLevel} (${m.championPoints.toLocaleString()} pts)`;
+                    }).join("\n"),
+                });
+            }
+
+            // Only show live game field if the player is currently in a game
+            if (liveGame && !liveGame.status) {
+                const gameMode   = liveGame.gameMode ?? "Unknown";
+                const gameLength = Math.floor((liveGame.gameLength ?? 0) / 60);
+                const participant = liveGame.participants?.find(p => p.puuid === puuid);
+                const liveChamp  = participant
+                    ? (champMap[String(participant.championId)] ?? `Champion ${participant.championId}`)
+                    : "Unknown";
+
+                embed.addFields({
+                    name: "🔴 Currently In Game",
+                    value: `**${liveChamp}** in ${gameMode} — ${gameLength}m elapsed`,
                 });
             }
 

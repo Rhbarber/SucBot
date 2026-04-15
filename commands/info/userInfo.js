@@ -21,20 +21,38 @@ module.exports = {
             .slice(0, 10)
             .join(", ") || "None";
 
-        const flags = user.flags?.toArray() ?? [];
+        const FLAG_LABELS = {
+            Staff:                      "🛠️ Discord Staff",
+            Partner:                    "🤝 Partnered Server Owner",
+            Hypesquad:                  "🏠 HypeSquad Events",
+            BugHunterLevel1:            "🐛 Bug Hunter Level 1",
+            BugHunterLevel2:            "🐛 Bug Hunter Level 2",
+            HypeSquadOnlineHouse1:      "🏡 HypeSquad Bravery",
+            HypeSquadOnlineHouse2:      "🏡 HypeSquad Brilliance",
+            HypeSquadOnlineHouse3:      "🏡 HypeSquad Balance",
+            PremiumEarlySupporter:      "💎 Early Supporter",
+            VerifiedDeveloper:          "🤖 Verified Bot Developer",
+            CertifiedModerator:         "🛡️ Certified Moderator",
+            ActiveDeveloper:            "👨‍💻 Active Developer",
+        };
+
+        const flags = (user.flags?.toArray() ?? [])
+            .map(f => FLAG_LABELS[f] ?? f)
+            .join("") || "None";
 
         const embed = new EmbedBuilder()
             .setColor(target.displayHexColor === "#000000" ? client.config.embedColor : target.displayHexColor)
             .setTitle(`${user.tag}`)
             .setThumbnail(user.displayAvatarURL({ size: 256 }))
             .addFields(
-                { name: "🪪 User ID",       value: user.id,                                              inline: true  },
-                { name: "🤖 Bot",           value: user.bot ? "Yes" : "No",                             inline: true  },
-                { name: "📅 Account Created", value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false },
-                { name: "📥 Joined Server",  value: `<t:${Math.floor(target.joinedTimestamp / 1000)}:R>`, inline: false },
-                { name: "🎨 Display Color",  value: target.displayHexColor,                              inline: true  },
-                { name: "🏅 Highest Role",   value: `<@&${target.roles.highest.id}>`,                   inline: true  },
+                { name: "🪪 User ID",         value: user.id,                                               inline: true  },
+                { name: "🤖 Bot",             value: user.bot ? "Yes" : "No",                              inline: true  },
+                { name: "📅 Account Created", value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`,  inline: false },
+                { name: "📥 Joined Server",   value: `<t:${Math.floor(target.joinedTimestamp / 1000)}:R>`, inline: false },
+                { name: "🎨 Display Color",   value: target.displayHexColor,                               inline: true  },
+                { name: "🏅 Highest Role",    value: `<@&${target.roles.highest.id}>`,                    inline: true  },
                 { name: `🎭 Roles (${target.roles.cache.size - 1})`, value: roles },
+                { name: "🏷️ Badges",          value: flags },
             )
             .setFooter({
                 text: `Requested by ${interaction.user.tag}`,

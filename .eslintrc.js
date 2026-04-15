@@ -9,9 +9,12 @@ module.exports = {
     },
     extends: "eslint:recommended",
     rules: {
+        // Catch Common Mistakes
         "no-unused-vars":  ["warn", { argsIgnorePattern: "^_" }],
         "no-console":      "off",
         "no-await-in-loop": "error",
+        
+        // Style
         "eqeqeq":          ["error", "always"],
         "prefer-const":    "warn",
         "no-var":          "error",

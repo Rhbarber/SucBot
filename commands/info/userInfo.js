@@ -22,23 +22,27 @@ module.exports = {
             .join(", ") || "None";
 
         const FLAG_LABELS = {
-            Staff:                      "🛠️ Discord Staff",
-            Partner:                    "🤝 Partnered Server Owner",
-            Hypesquad:                  "🏠 HypeSquad Events",
-            BugHunterLevel1:            "🐛 Bug Hunter Level 1",
-            BugHunterLevel2:            "🐛 Bug Hunter Level 2",
-            HypeSquadOnlineHouse1:      "🏡 HypeSquad Bravery",
-            HypeSquadOnlineHouse2:      "🏡 HypeSquad Brilliance",
-            HypeSquadOnlineHouse3:      "🏡 HypeSquad Balance",
-            PremiumEarlySupporter:      "💎 Early Supporter",
-            VerifiedDeveloper:          "🤖 Verified Bot Developer",
-            CertifiedModerator:         "🛡️ Certified Moderator",
-            ActiveDeveloper:            "👨‍💻 Active Developer",
+            // Official public badges
+            Staff:                 "👮 Discord Staff",
+            Partner:               "🤝 Partnered Server Owner",
+            Hypesquad:             "🏠 HypeSquad Events Member",
+            BugHunterLevel1:       "🐛 Bug Hunter Level 1",
+            BugHunterLevel2:       "🐛 Bug Hunter Level 2",
+            HypeSquadOnlineHouse1: "🏡 HypeSquad Bravery",
+            HypeSquadOnlineHouse2: "🏡 HypeSquad Brilliance",
+            HypeSquadOnlineHouse3: "🏡 HypeSquad Balance",
+            PremiumEarlySupporter: "💎 Early Nitro Supporter",
+            VerifiedDeveloper:     "🤖 Early Verified Bot Developer",
+            CertifiedModerator:    "🛡️ Moderator Programs Alumni",
+            ActiveDeveloper:       "👨‍💻 Active Developer",
+            // Bot-specific
+            VerifiedBot:           "✅ Verified Bot",
+            BotHTTPInteractions:   "⚡ HTTP Interactions Bot",
+            TeamPseudoUser:        "👥 Team User",
         };
 
         const flags = (user.flags?.toArray() ?? [])
-            .map(f => FLAG_LABELS[f] ?? f)
-            .join("") || "None";
+            .map(f => FLAG_LABELS[f] ?? f).join("") || "None";
 
         const embed = new EmbedBuilder()
             .setColor(target.displayHexColor === "#000000" ? client.config.embedColor : target.displayHexColor)

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
-const { minecraft } = require("../../db");
+const { minecraft } = require("../../../db");
 
 const statusCache = new Map();
 const STATUS_TTL = 30000;

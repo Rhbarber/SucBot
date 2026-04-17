@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
-const { minecraft } = require("../../db");
+const { minecraft } = require("../../../db");
 
 const TTL = 1000 * 60 * 60 * 24;
 

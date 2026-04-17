@@ -31,6 +31,10 @@ function buildSQLiteAdapter() {
             quantity  INTEGER NOT NULL DEFAULT 1,
             PRIMARY KEY (guild_id, user_id, item)
         );
+        CREATE TABLE IF NOT EXISTS minecraft (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
     `);
 
     return {
@@ -55,6 +59,7 @@ function buildSQLiteAdapter() {
                 `).all(`money_${guildId}_%`, limit);
             },
         },
+
         cooldowns: {
             async get(type, guildId, userId) {
                 const row = db.prepare("SELECT value FROM cooldowns WHERE key = ?")
@@ -73,6 +78,7 @@ function buildSQLiteAdapter() {
                 }
             },
         },
+
         warnings: {
             async add(guildId, userId, modId, reason) {
                 db.prepare(`
@@ -96,6 +102,7 @@ function buildSQLiteAdapter() {
                     .run(guildId, userId);
             },
         },
+
         inventory: {
             async get(guildId, userId) {
                 return db.prepare(`
@@ -109,6 +116,19 @@ function buildSQLiteAdapter() {
                     INSERT INTO inventory (guild_id, user_id, item, quantity) VALUES (?, ?, ?, ?)
                     ON CONFLICT(guild_id, user_id, item) DO UPDATE SET quantity = quantity + excluded.quantity
                 `).run(guildId, userId, item, quantity);
+            },
+        },
+
+        minecraft: {
+            async get(key) {
+                const row = db.prepare("SELECT value FROM minecraft WHERE key = ?").get(key);
+                return row ? JSON.parse(row.value) : null;
+            },
+            async set(key, value) {
+                db.prepare(`
+                    INSERT INTO minecraft (key, value) VALUES (?, ?)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                `).run(key, JSON.stringify(value));
             },
         },
     };
@@ -159,6 +179,12 @@ function buildMySQLAdapter() {
                 PRIMARY KEY (guild_id, user_id, item)
             )
         `);
+        await pool.execute(`
+            CREATE TABLE IF NOT EXISTS minecraft (
+                \`key\`   VARCHAR(100) PRIMARY KEY,
+                value    TEXT NOT NULL
+            )
+        `);
     }
 
     init().catch(err => console.error("[DB] MySQL init error:", err));
@@ -190,6 +216,7 @@ function buildMySQLAdapter() {
                 return rows;
             },
         },
+
         cooldowns: {
             async get(type, guildId, userId) {
                 const [rows] = await pool.execute(
@@ -213,6 +240,7 @@ function buildMySQLAdapter() {
                 }
             },
         },
+
         warnings: {
             async add(guildId, userId, modId, reason) {
                 await pool.execute(
@@ -243,6 +271,7 @@ function buildMySQLAdapter() {
                 );
             },
         },
+
         inventory: {
             async get(guildId, userId) {
                 const [rows] = await pool.execute(
@@ -261,10 +290,27 @@ function buildMySQLAdapter() {
                 );
             },
         },
+
+        minecraft: {
+            async get(key) {
+                const [rows] = await pool.execute(
+                    "SELECT value FROM minecraft WHERE `key` = ?",
+                    [key]
+                );
+                return rows[0] ? JSON.parse(rows[0].value) : null;
+            },
+            async set(key, value) {
+                await pool.execute(
+                    `INSERT INTO minecraft (\`key\`, value) VALUES (?, ?)
+                     ON DUPLICATE KEY UPDATE value = VALUES(value)`,
+                    [key, JSON.stringify(value)]
+                );
+            },
+        },
     };
 }
 
-// ── Export the right adapter ──────────────────────────────────────────────────
+// ── Export ────────────────────────────────────────────────────────────────────
 const type = database?.type?.toLowerCase();
 
 if (type === "mysql") {
@@ -274,5 +320,5 @@ if (type === "mysql") {
     console.log("[DB] Using SQLite adapter.");
     module.exports = buildSQLiteAdapter();
 } else {
-    throw new Error(`[DB] Unknown database type "${type}" in config.json. Expected "sqlite" or "mysql".`);
+    throw new Error(`[DB] Unknown database type "${type}" in config.json.`);
 }

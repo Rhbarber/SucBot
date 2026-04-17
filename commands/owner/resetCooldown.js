@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const { cooldowns } = require("../../db");
 
 module.exports = {
@@ -38,6 +38,6 @@ module.exports = {
                 iconURL: interaction.user.displayAvatarURL(),
             });
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     },
 };

@@ -1,17 +1,14 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
-const { minecraft } = require("../../../db");
+const { minecraft } = require("../../db");
 
-const TTL = 1000 * 60 * 60 * 24; // 24 hours
+const TTL = 1000 * 60 * 60 * 24;
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("mcinfo")
-        .setDescription("Get basic Minecraft account info")
+        .setDescription("View Minecraft account details")
         .addStringOption(option =>
-            option
-                .setName("username")
-                .setDescription("Minecraft username")
-                .setRequired(true)
+            option.setName("username").setDescription("Minecraft username").setRequired(true)
         ),
 
     async execute(interaction, client) {
@@ -42,19 +39,23 @@ module.exports = {
                 await minecraft.set(key, entry);
             }
 
-            const dashedUUID = entry.uuid.replace(
+            const dashed = entry.uuid.replace(
                 /^(.{8})(.{4})(.{4})(.{4})(.{12})$/,
                 "$1-$2-$3-$4-$5"
             );
 
             const embed = new EmbedBuilder()
                 .setColor(client.config.embedColor)
-                .setTitle(`Minecraft Info: ${entry.name}`)
-                .addFields(
-                    { name: "UUID", value: dashedUUID },
-                    { name: "Raw UUID", value: entry.uuid }
-                )
+                .setAuthor({
+                    name: entry.name,
+                    iconURL: `https://api.mineatar.io/head/${entry.uuid}`,
+                })
                 .setThumbnail(`https://api.mineatar.io/head/${entry.uuid}`)
+                .addFields(
+                    { name: "🆔 UUID", value: `\`${dashed}\`` },
+                    { name: "🔑 Raw UUID", value: `\`${entry.uuid}\`` }
+                )
+                .setFooter({ text: "Minecraft Profile Lookup" })
                 .setTimestamp();
 
             await interaction.reply({ embeds: [embed] });

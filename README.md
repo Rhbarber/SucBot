@@ -40,6 +40,7 @@ FORTNITE_API_KEY=your_fortnite_api_key_here
 | `STATUS` | ❌ | Activity status text displayed by the bot. Defaults to `with discord.js v14` if not set. |
 | `RIOT_API_KEY` | ⚠️ | Required for `/lol`. Get a free key at [developer.riotgames.com](https://developer.riotgames.com). Development keys expire every 24h; apply for a Personal API Key for a permanent one. |
 | `FORTNITE_API_KEY` | ⚠️ | Required for `/fortnite`. Get a free key at [dash.fortnite-api.com/account](https://dash.fortnite-api.com/account) by logging in with Discord. |
+| `HYPIXEL_API_KEY` | ⚠️ | Required for `/hypixel`. Generate a free key at [https://developer.hypixel.net](https://developer.hypixel.net/) |
 
 ---
 
@@ -165,6 +166,8 @@ module.exports = {
 | `/fortnite` | Fortnite stats — wins, K/D, win rate across all modes | `FORTNITE_API_KEY` in `.env` |
 | `/skin` | Minecraft player skin head | Nothing |
 | `/ip` | Minecraft server info | Nothing |
+| `/mcinfo` | Minecraft account info (UUID, skin) | Nothing |
+| `/hypixel` | Hypixel player status (online, game, mode) | `HYPIXEL_API_KEY` in `.env` |
 
 ### 🐾 Fun
 | Command | Description |
@@ -191,3 +194,8 @@ module.exports = {
 1. Go to [dash.fortnite-api.com/account](https://dash.fortnite-api.com/account) and log in with Discord
 2. Generate a free API key from the dashboard
 3. Add the key to your `.env` as `FORTNITE_API_KEY`
+
+### Hypixel (Minecraft)
+1. Go to [https://developer.hypixel.net](https://developer.hypixel.net) and log in
+2. Click "REGENERATE API KEY"
+3. Add it to your `.env` as `HYPIXEL_API_KEY`

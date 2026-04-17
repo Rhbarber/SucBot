@@ -1,19 +1,24 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
-const { minecraft } = require("../../../db");
+const { minecraft } = require("../../db");
 
 const statusCache = new Map();
-const STATUS_TTL = 1000 * 30; // 30 seconds
-const UUID_TTL = 1000 * 60 * 60 * 24; // 24 hours
+const STATUS_TTL = 30000;
+const UUID_TTL = 1000 * 60 * 60 * 24;
+
+const GAME_MAP = {
+    BEDWARS: "Bed Wars",
+    SKYWARS: "SkyWars",
+    SKYBLOCK: "SkyBlock",
+    DUELS: "Duels",
+    PIT: "The Pit",
+};
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("hypixel")
-        .setDescription("Check Hypixel status of a player")
+        .setDescription("Check Hypixel player status")
         .addStringOption(option =>
-            option
-                .setName("username")
-                .setDescription("Minecraft username")
-                .setRequired(true)
+            option.setName("username").setDescription("Minecraft username").setRequired(true)
         ),
 
     async execute(interaction, client) {
@@ -29,12 +34,10 @@ module.exports = {
         }
 
         try {
-            // ── UUID (DB cache)
             let entry = await minecraft.get(key);
 
             if (!entry || entry.expires < Date.now()) {
                 const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${username}`);
-
                 if (!res.ok) {
                     return interaction.reply({
                         content: "❌ Player not found.",
@@ -55,7 +58,6 @@ module.exports = {
 
             const uuid = entry.uuid;
 
-            // ── Hypixel status (memory cache)
             let statusEntry = statusCache.get(uuid);
 
             if (!statusEntry || statusEntry.expires < Date.now()) {
@@ -72,25 +74,26 @@ module.exports = {
                     });
                 }
 
-                statusEntry = {
-                    data,
-                    expires: Date.now() + STATUS_TTL,
-                };
-
+                statusEntry = { data, expires: Date.now() + STATUS_TTL };
                 statusCache.set(uuid, statusEntry);
             }
 
             const session = statusEntry.data.session;
+            const game = GAME_MAP[session?.gameType] || session?.gameType || "N/A";
 
             const embed = new EmbedBuilder()
                 .setColor(client.config.embedColor)
-                .setTitle(`Hypixel Status: ${entry.name}`)
-                .setThumbnail(`https://crafatar.com/avatars/${uuid}`)
+                .setAuthor({
+                    name: entry.name,
+                    iconURL: `https://api.mineatar.io/head/${uuid}`,
+                })
+                .setThumbnail(`https://api.mineatar.io/head/${uuid}`)
                 .addFields(
-                    { name: "Online", value: session?.online ? "✅ Yes" : "❌ No" },
-                    { name: "Game", value: session?.gameType || "N/A", inline: true },
-                    { name: "Mode", value: session?.mode || "N/A", inline: true }
+                    { name: "🟢 Status", value: session?.online ? "Online" : "Offline", inline: true },
+                    { name: "🎮 Game", value: game, inline: true },
+                    { name: "📍 Mode", value: session?.mode || "N/A", inline: true }
                 )
+                .setFooter({ text: "Hypixel Network Status" })
                 .setTimestamp();
 
             await interaction.reply({ embeds: [embed] });

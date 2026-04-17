@@ -12,7 +12,7 @@
     "author": "Rhbarber",
     "license": "GPL-3.0",
     "dependencies": {
-        "better-sqlite3": "^11.9.1",
+        "better-sqlite3": "^12.9.0",
         "dayjs": "^1.11.13",
         "discord.js": "^14.26.3",
         "dotenv": "^16.5.0",

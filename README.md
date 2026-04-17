@@ -27,10 +27,16 @@ CLIENT_ID=your_client_id_here
 STATUS=with discord.js v14
 
 # Required for /lol command
+# Get a free key at https://developer.riotgames.com
 RIOT_API_KEY=your_riot_api_key_here
 
 # Required for /fortnite command
+# Get a free key at https://dash.fortnite-api.com/account (log in with Discord)
 FORTNITE_API_KEY=your_fortnite_api_key_here
+
+# Required for /hypixel command
+# Get a free key at https://api.hypixel.net
+HYPIXEL_API_KEY=your__hypixel_api_key_here
 ```
 
 | Variable | Required | Description |

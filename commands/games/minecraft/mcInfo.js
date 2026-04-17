@@ -54,7 +54,7 @@ module.exports = {
                     { name: "UUID", value: dashedUUID },
                     { name: "Raw UUID", value: entry.uuid }
                 )
-                .setThumbnail(`https://crafatar.com/avatars/${entry.uuid}`)
+                .setThumbnail(`https://api.mineatar.io/head/${entry.uuid}`)
                 .setTimestamp();
 
             await interaction.reply({ embeds: [embed] });

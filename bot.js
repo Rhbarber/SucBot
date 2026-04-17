@@ -6,10 +6,12 @@ const {
     Routes,
     EmbedBuilder,
     Colors,
+    MessageFlags,
+    PermissionFlagsBits,
 } = require("discord.js");
 const fs = require("node:fs");
 const path = require("node:path");
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 const config = require("./config.json");
 
@@ -123,18 +125,22 @@ client.on("interactionCreate", async interaction => {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // Owner-only guard
-    if (command.ownerOnly && interaction.user.id !== config.ownerId) {
-        return interaction.reply({
-            content: "This command is restricted to the bot owner.",
-            ephemeral: true,
-        });
+    // Owner-only guard: allow owners (array) or members with Administrator permission
+    if (command.ownerOnly) {
+        const isOwner = config.ownerIds?.includes(interaction.user.id);
+        const isAdmin = interaction.member?.permissions?.has(PermissionFlagsBits.Administrator);
+        if (!isOwner && !isAdmin) {
+            return interaction.reply({
+                content: "This command is restricted to bot owners and server administrators.",
+                flags: MessageFlags.Ephemeral,
+            });
+        }
     }
 
     // Cooldown guard
     const cooldownMessage = checkCooldown(interaction, command);
     if (cooldownMessage) {
-        return interaction.reply({ content: cooldownMessage, ephemeral: true });
+        return interaction.reply({ content: cooldownMessage, flags: MessageFlags.Ephemeral });
     }
 
     try {
@@ -156,7 +162,7 @@ client.on("interactionCreate", async interaction => {
 
         await logToChannel({ embeds: [embed] });
 
-        const reply = { content: "Something went wrong while running this command.", ephemeral: true };
+        const reply = { content: "Something went wrong while running this command.", flags: MessageFlags.Ephemeral };
         if (interaction.replied || interaction.deferred) {
             await interaction.followUp(reply).catch(console.error);
         } else {

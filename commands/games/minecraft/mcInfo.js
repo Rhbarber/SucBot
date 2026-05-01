@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const { minecraft } = require("../../../db");
 const crypto = require("node:crypto");
 
@@ -23,10 +23,14 @@ function getOfflineUUID(username) {
     );
 }
 
-// Deterministic default skin based on username
+// Deterministic default skin based on username (matches Minecraft's Java hashCode)
 function getDefaultSkin(username) {
-    const hash = crypto.createHash("md5").update(username.toLowerCase()).digest();
-    return (hash[0] % 2 === 0) ? STEVE : ALEX;
+    const lower = username.toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < lower.length; i++) {
+        hash = (Math.imul(31, hash) + lower.charCodeAt(i)) | 0;
+    }
+    return (hash % 2 === 0) ? STEVE : ALEX;
 }
 
 module.exports = {
@@ -109,7 +113,7 @@ module.exports = {
             console.error(err);
             await interaction.reply({
                 content: "Something went wrong.",
-                flags: 64
+                flags: MessageFlags.Ephemeral
             });
         }
     },

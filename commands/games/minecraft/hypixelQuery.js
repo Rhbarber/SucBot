@@ -18,7 +18,10 @@ module.exports = {
         .setName("hypixel")
         .setDescription("Check Hypixel player status")
         .addStringOption(option =>
-            option.setName("username").setDescription("Minecraft username").setRequired(true)
+            option
+                .setName("username")
+                .setDescription("Minecraft username")
+                .setRequired(true)
         ),
 
     async execute(interaction, client) {
@@ -34,10 +37,12 @@ module.exports = {
         }
 
         try {
+            // ── UUID (DB cache)
             let entry = await minecraft.get(key);
 
             if (!entry || entry.expires < Date.now()) {
                 const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${username}`);
+
                 if (!res.ok) {
                     return interaction.reply({
                         content: "❌ Player not found.",
@@ -57,7 +62,9 @@ module.exports = {
             }
 
             const uuid = entry.uuid;
+            const avatar = `https://api.mineatar.io/head/${uuid}`;
 
+            // ── Hypixel status (memory cache)
             let statusEntry = statusCache.get(uuid);
 
             if (!statusEntry || statusEntry.expires < Date.now()) {
@@ -74,24 +81,39 @@ module.exports = {
                     });
                 }
 
-                statusEntry = { data, expires: Date.now() + STATUS_TTL };
+                statusEntry = {
+                    data,
+                    expires: Date.now() + STATUS_TTL,
+                };
+
                 statusCache.set(uuid, statusEntry);
             }
 
             const session = statusEntry.data.session;
             const game = GAME_MAP[session?.gameType] || session?.gameType || "N/A";
 
+            const isOnline = session?.online;
+
             const embed = new EmbedBuilder()
                 .setColor(client.config.embedColor)
-                .setAuthor({
-                    name: entry.name,
-                    iconURL: `https://api.mineatar.io/head/${uuid}`,
-                })
-                .setThumbnail(`https://api.mineatar.io/head/${uuid}`)
+                .setAuthor({ name: entry.name, iconURL: avatar })
+                .setThumbnail(avatar)
                 .addFields(
-                    { name: "🟢 Status", value: session?.online ? "Online" : "Offline", inline: true },
-                    { name: "🎮 Game", value: game, inline: true },
-                    { name: "📍 Mode", value: session?.mode || "N/A", inline: true }
+                    {
+                        name: isOnline ? "🟢 Status" : "🔴 Status",
+                        value: isOnline ? "Online" : "Offline",
+                        inline: true,
+                    },
+                    {
+                        name: "🎮 Game",
+                        value: game,
+                        inline: true,
+                    },
+                    {
+                        name: "📍 Mode",
+                        value: session?.mode || "N/A",
+                        inline: true,
+                    }
                 )
                 .setFooter({ text: "Hypixel Network Status" })
                 .setTimestamp();

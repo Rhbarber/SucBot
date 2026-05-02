@@ -4,7 +4,7 @@ A Discord bot modernized to discord.js v14 with Slash Commands.
 
 ## Requirements
 
-- Node.js **v20 or higher**
+- Node.js **v18 or higher**
 - A bot application on the [Discord Developer Portal](https://discord.com/developers/applications)
 
 ## Installation
@@ -37,16 +37,26 @@ FORTNITE_API_KEY=your_fortnite_api_key_here
 # Required for /hypixel command
 # Get a free key at https://api.hypixel.net
 HYPIXEL_API_KEY=your__hypixel_api_key_here
+
+# Required for /weather command
+# Get a free key at https://openweathermap.org/api (1,000 calls/day free)
+OPENWEATHER_API_KEY=your_openweather_api_key_here
+
+# Required for /game command
+# Get a free key at https://rawg.io/apidocs
+RAWG_API_KEY=your_rawg_api_key_here
 ```
 
 | Variable | Required | Description |
 |---|---|---|
 | `TOKEN` | ✅ | Your bot's token. Found at [Discord Developer Portal](https://discord.com/developers/applications) → your app → **Bot** → **Token**. |
 | `CLIENT_ID` | ✅ | Your application's ID. Found under **General Information** → **Application ID**. |
-| `STATUS` | ❌ | Activity status text displayed by the bot. Defaults to `with discord.js v14` if not set. |
-| `RIOT_API_KEY` | ⚠️ | Required for `/lol`. Get a free key at [developer.riotgames.com](https://developer.riotgames.com). Development keys expire every 24h; apply for a Personal API Key for a permanent one. |
+| `STATUS` | ❌ | Activity status text displayed by the bot. Defaults to `with discord.js v14` if not set. Can also be changed at runtime with `/setstatus`. |
+| `RIOT_API_KEY` | ⚠️ | Required for `/lol`. Get a free key at [developer.riotgames.com](https://developer.riotgames.com). Development keys expire every 24h — apply for a Personal API Key for a permanent one. |
 | `FORTNITE_API_KEY` | ⚠️ | Required for `/fortnite`. Get a free key at [dash.fortnite-api.com/account](https://dash.fortnite-api.com/account) by logging in with Discord. |
 | `HYPIXEL_API_KEY` | ⚠️ | Required for `/hypixel`. Generate a free key at [https://developer.hypixel.net](https://developer.hypixel.net/) |
+| `OPENWEATHER_API_KEY` | ⚠️ | Required for `/weather`. Get a free key at [openweathermap.org/api](https://openweathermap.org/api). Free tier includes 1,000 calls/day. |
+| `RAWG_API_KEY` | ⚠️ | Required for `/game`. Get a free key at [rawg.io/apidocs](https://rawg.io/apidocs). Free for personal use. |
 
 ---
 
@@ -56,7 +66,7 @@ HYPIXEL_API_KEY=your__hypixel_api_key_here
 {
     "devMode": true,
     "guildId": "YOUR_DEV_SERVER_ID_HERE",
-    "ownerId": "YOUR_DISCORD_USER_ID_HERE",
+    "ownerIds": ["YOUR_DISCORD_USER_ID_HERE"],
     "embedColor": "#5865F2",
     "cooldown": 3,
     "logChannelId": "YOUR_LOG_CHANNEL_ID_HERE",
@@ -77,7 +87,7 @@ HYPIXEL_API_KEY=your__hypixel_api_key_here
 |---|---|---|
 | `devMode` | `boolean` | When `true`, Slash Commands are registered only to the server defined in `guildId`, making registration instant. Recommended during development. Set to `false` for production to register commands globally (may take up to 1 hour to propagate). |
 | `guildId` | `string` | ID of your development server. Only used when `devMode` is `true`. To get the ID, enable **Developer Mode** in Discord (Settings → Advanced) then right-click the server → **Copy Server ID**. |
-| `ownerId` | `string` | Your Discord user ID. Commands that export `ownerOnly: true` will only be executable by this user. To get your ID, enable **Developer Mode** then right-click your username → **Copy User ID**. |
+| `ownerIds` | `string[]` | Array of Discord user IDs that have full access to owner-only commands. Commands with `ownerOnly: true` are also accessible by server administrators. To get a user ID, enable **Developer Mode** in Discord then right-click the username → **Copy User ID**. Example: `["123456789", "987654321"]` |
 | `embedColor` | `string` | Default color for all bot embeds, in hex format. Accessible in any command via `client.config.embedColor`. |
 | `cooldown` | `number` | Default cooldown in seconds between command uses per user. Individual commands can override this by exporting their own `cooldown` field. |
 | `logChannelId` | `string` | ID of the text channel where the bot will post a startup message and a detailed embed whenever a command throws an error. Set to `""` or remove the field to disable Discord logging. |
@@ -137,7 +147,10 @@ module.exports = {
 ### 🛡️ Moderation
 | Command | Description | Permission |
 |---|---|---|
-| `/ban` | Ban a member with an optional reason and message deletion | Ban Members |
+| `/ban` | Ban a member with optional reason and message deletion | Ban Members |
+| `/unban` | Unban a user by their ID | Ban Members |
+| `/softban` | Ban then immediately unban to delete message history | Ban Members |
+| `/massban` | Ban up to 50 users by ID at once — useful after raids | Ban Members |
 | `/kick` | Kick a member with an optional reason | Kick Members |
 | `/mute` | Time out a member for a set duration | Moderate Members |
 | `/unmute` | Remove a timeout from a member | Moderate Members |
@@ -145,7 +158,13 @@ module.exports = {
 | `/warnings list` | View all warnings for a member | Moderate Members |
 | `/warnings remove` | Remove a specific warning by ID | Moderate Members |
 | `/warnings clear` | Clear all warnings for a member | Moderate Members |
+| `/note add` | Add a private moderator note to a member | Moderate Members |
+| `/note list` | View all notes for a member (ephemeral) | Moderate Members |
+| `/note remove` | Remove a note by ID | Moderate Members |
 | `/purge` | Bulk delete up to 100 messages, optionally filtered by user | Manage Messages |
+| `/lock` | Prevent @everyone from sending messages in a channel | Manage Channels |
+| `/unlock` | Restore messaging permissions in a locked channel | Manage Channels |
+| `/slowmode` | Set or clear slowmode in a channel (0–6h) | Manage Channels |
 
 ### 💰 Economy
 | Command | Description |
@@ -161,7 +180,8 @@ module.exports = {
 ### ℹ️ Info
 | Command | Description |
 |---|---|
-| `/userinfo` | Account age, roles, join date, and more for a user |
+| `/weather` | Current weather for any city — temperature, humidity, wind, sunrise/sunset | 
+| `/userinfo` | Account age, roles, join date, badges and more for a user |
 | `/serverinfo` | Server stats, member count, boost level, and more |
 | `/ping` | Bot latency, WebSocket ping, RAM usage, and uptime |
 
@@ -170,21 +190,29 @@ module.exports = {
 |---|---|---|
 | `/lol` | League of Legends profile — rank, W/L, KDA, champion mastery | `RIOT_API_KEY` in `.env` |
 | `/fortnite` | Fortnite stats — wins, K/D, win rate across all modes | `FORTNITE_API_KEY` in `.env` |
+| `/game` | Video game lookup — rating, genres, platforms, Metacritic, where to buy | `RAWG_API_KEY` in `.env` |
 | `/skin` | Minecraft player skin head | Nothing |
 | `/ip` | Minecraft server info | Nothing |
-| `/mcinfo` | Minecraft account info (UUID, skin) | Nothing |
-| `/hypixel` | Hypixel player status (online, game, mode) | `HYPIXEL_API_KEY` in `.env` |
 
 ### 🐾 Fun
 | Command | Description |
 |---|---|
+| `/trivia` | Random trivia question with interactive buttons, category & difficulty options |
+| `/joke` | Random joke with category and safe mode options |
+| `/advice` | Random piece of advice |
 | `/dog` | Random dog picture |
 | `/cat` | Random cat picture |
+| `/fox` | Random fox picture |
 
 ### 🔧 Owner Only
 | Command | Description |
 |---|---|
 | `/resetcooldown` | Reset a daily/weekly/work cooldown for any user |
+| `/announce` | Send a formatted announcement embed to any channel with optional ping |
+| `/setstatus` | Change the bot's activity and online status on the fly |
+| `/maintenance` | Toggle maintenance mode — blocks all non-owner commands |
+| `/eval` | Execute JavaScript and return the result — useful for debugging |
+| `/massban` | Ban up to 50 users by ID at once (also usable by members with Ban Members) |
 
 ---
 
@@ -205,3 +233,14 @@ module.exports = {
 1. Go to [https://developer.hypixel.net](https://developer.hypixel.net) and log in
 2. Click "REGENERATE API KEY"
 3. Add it to your `.env` as `HYPIXEL_API_KEY`
+
+### OpenWeatherMap (Weather)
+1. Go to [openweathermap.org/api](https://openweathermap.org/api) and sign up
+2. Your API key will be emailed to you and also available on your account page
+3. Add the key to your `.env` as `OPENWEATHER_API_KEY`
+4. Note: new keys may take a few minutes to activate
+
+### RAWG (Game Lookup)
+1. Go to [rawg.io/apidocs](https://rawg.io/apidocs) and sign up
+2. Fill in the short developer info form to receive your key
+3. Add the key to your `.env` as `RAWG_API_KEY`

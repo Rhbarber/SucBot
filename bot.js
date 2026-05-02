@@ -33,9 +33,11 @@ const client = new Client({
     ],
 });
 
-client.commands  = new Collection();
-client.cooldowns = new Collection();
-client.config    = config;
+client.commands          = new Collection();
+client.cooldowns         = new Collection();
+client.config            = config;
+client.maintenance       = false;
+client.maintenanceMessage = "The bot is currently undergoing maintenance. Please try again later.";
 
 // ── Load commands (walks all subdirectories of /commands) ────────────────────
 const commandsPath = path.join(__dirname, "commands");
@@ -124,6 +126,18 @@ client.on("interactionCreate", async interaction => {
 
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
+
+    // Maintenance mode guard — block all non-owner commands
+    if (client.maintenance) {
+        const isOwner = config.ownerIds?.includes(interaction.user.id);
+        const isAdmin = interaction.member?.permissions?.has(PermissionFlagsBits.Administrator);
+        if (!isOwner && !isAdmin) {
+            return interaction.reply({
+                content: `🔧 ${client.maintenanceMessage}`,
+                flags: MessageFlags.Ephemeral,
+            });
+        }
+    }
 
     // Owner-only guard: allow owners (array) or members with Administrator permission
     if (command.ownerOnly) {

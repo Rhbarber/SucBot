@@ -56,6 +56,16 @@ module.exports = {
         const geoRes = await fetch(
             `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${apiKey}`
         );
+
+        // Surface API-level errors (e.g. invalid or not yet activated key)
+        if (!geoRes.ok) {
+            const err = await geoRes.json().catch(() => ({}));
+            console.error("[WEATHER] Geocoding error:", geoRes.status, err);
+            return interaction.editReply({
+                content: `❌ OpenWeatherMap API error ${geoRes.status}: ${err.message ?? "Unknown error"}. If your key was just created, it may take up to a few hours to activate.`,
+            });
+        }
+
         const geoData = await geoRes.json();
 
         if (!geoData.length) {

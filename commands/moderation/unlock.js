@@ -17,7 +17,7 @@ module.exports = {
         )
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
-    async execute(interaction, client) {
+    async execute(interaction, _client) {
         const channel = interaction.options.getChannel("channel") ?? interaction.channel;
         const reason  = interaction.options.getString("reason") ?? "No reason provided.";
 

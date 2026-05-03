@@ -4,7 +4,7 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    MessageFlags,
+    ComponentType,
 } = require("discord.js");
 
 const CATEGORIES = [

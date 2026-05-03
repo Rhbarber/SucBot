@@ -5,7 +5,6 @@ const {
     ButtonBuilder,
     ButtonStyle,
     MessageFlags,
-    ComponentType,
 } = require("discord.js");
 
 const CATEGORIES = [
@@ -29,15 +28,18 @@ const CATEGORIES = [
 const DIFFICULTY_EMOJIS = { easy: "🟢", medium: "🟡", hard: "🔴" };
 const TIMEOUT = 20_000; // 20 seconds to answer
 
+const HTML_ENTITIES = {
+    "&amp;":  "&",
+    "&lt;":   "<",
+    "&gt;":   ">",
+    "&quot;": '"',
+    "&#039;": "'",
+    "&ldquo;": "“",
+    "&rdquo;": "”",
+};
+
 function decodeHTML(str) {
-    return str
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&#039;/g, "'")
-        .replace(/&ldquo;/g, "\u201C")
-        .replace(/&rdquo;/g, "\u201D");
+    return str.replace(/&[^;]+;/g, entity => HTML_ENTITIES[entity] ?? entity);
 }
 
 module.exports = {
@@ -82,7 +84,13 @@ module.exports = {
         const question    = decodeHTML(decodeURIComponent(q.question));
         const correct     = decodeHTML(decodeURIComponent(q.correct_answer));
         const incorrect   = q.incorrect_answers.map(a => decodeHTML(decodeURIComponent(a)));
-        const allAnswers  = [...incorrect, correct].sort(() => Math.random() - 0.5);
+        // Fisher-Yates shuffle using crypto.randomInt to avoid weak RNG warning
+        const allAnswers = [...incorrect, correct];
+        const { randomInt } = require("node:crypto");
+        for (let i = allAnswers.length - 1; i > 0; i--) {
+            const j = randomInt(0, i + 1);
+            [allAnswers[i], allAnswers[j]] = [allAnswers[j], allAnswers[i]];
+        }
         const correctIdx  = allAnswers.indexOf(correct);
         const diffEmoji   = DIFFICULTY_EMOJIS[q.difficulty] ?? "❓";
         const categoryStr = decodeHTML(decodeURIComponent(q.category));

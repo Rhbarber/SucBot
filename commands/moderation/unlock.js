@@ -22,9 +22,9 @@ module.exports = {
         const reason  = interaction.options.getString("reason") ?? "No reason provided.";
 
         const everyoneRole = interaction.guild.roles.everyone;
-        const current = channel.permissionOverwrites.cache.get(everyoneRole.id);
+        const overwrite    = channel.permissionOverwrites.cache.get(everyoneRole.id);
 
-        if (!current?.deny.has(PermissionFlagsBits.SendMessages)) {
+        if (!overwrite?.deny.has(PermissionFlagsBits.SendMessages)) {
             return interaction.reply({ content: `${channel} is not locked.`, flags: MessageFlags.Ephemeral });
         }
 

@@ -13,7 +13,7 @@ module.exports = {
 
     ownerOnly: true,
 
-    async execute(interaction, client) {
+    async execute(interaction, _client) {
         const code      = interaction.options.getString("code");
         const ephemeral = interaction.options.getBoolean("ephemeral") ?? true;
         const start     = Date.now();
@@ -24,7 +24,7 @@ module.exports = {
 
         try {
             // eslint-disable-next-line no-eval
-            result = await eval(code);
+            result = await eval(code); // nosec B307
             result = typeof result !== "string" ? JSON.stringify(result, null, 2) : result;
         } catch (err) {
             result  = err.message;

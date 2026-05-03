@@ -4,7 +4,7 @@ A Discord bot modernized to discord.js v14 with Slash Commands.
 
 ## Requirements
 
-- Node.js **v18 or higher**
+- Node.js **v20 or higher**
 - A bot application on the [Discord Developer Portal](https://discord.com/developers/applications)
 
 ## Installation

@@ -42,19 +42,20 @@ module.exports = {
             return interaction.editReply({ content: "❌ You can ban a maximum of 50 users at once." });
         }
 
-        const results = { success: [], failed: [] };
+        const banOptions = {
+            reason: `[Massban by ${interaction.user.tag}] ${reason}`,
+            deleteMessageSeconds: deleteDays * 86400,
+        };
 
-        for (const id of ids) {
-            try {
-                await interaction.guild.members.ban(id, {
-                    reason: `[Massban by ${interaction.user.tag}] ${reason}`,
-                    deleteMessageSeconds: deleteDays * 86400,
-                });
-                results.success.push(id);
-            } catch {
-                results.failed.push(id);
-            }
-        }
+        const settled = await Promise.allSettled(
+            ids.map(id => interaction.guild.members.ban(id, banOptions))
+        );
+
+        const results = settled.reduce((acc, result, i) => {
+            if (result.status === "fulfilled") acc.success.push(ids[i]);
+            else acc.failed.push(ids[i]);
+            return acc;
+        }, { success: [], failed: [] });
 
         const embed = new EmbedBuilder()
             .setColor(client.config.embedColor)

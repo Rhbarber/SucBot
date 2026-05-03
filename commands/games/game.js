@@ -1,5 +1,32 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
+// RAWG no longer returns store URLs — build them from known store slugs
+const STORE_URLS = {
+    "steam":               "https://store.steampowered.com/app/",
+    "playstation-store":   "https://store.playstation.com",
+    "xbox-store":          "https://www.xbox.com/games",
+    "xbox360":             "https://marketplace.xbox.com",
+    "apple-appstore":      "https://apps.apple.com",
+    "gog":                 "https://www.gog.com",
+    "nintendo":            "https://www.nintendo.com/store",
+    "google-play":         "https://play.google.com/store",
+    "itch.io":             "https://itch.io",
+    "epic-games":          "https://store.epicgames.com",
+};
+
+const STORE_EMOJIS = {
+    "steam":               "🖥️",
+    "playstation-store":   "🎮",
+    "xbox-store":          "🎮",
+    "xbox360":             "🎮",
+    "apple-appstore":      "🍎",
+    "gog":                 "🛒",
+    "nintendo":            "🕹️",
+    "google-play":         "📱",
+    "itch.io":             "🎲",
+    "epic-games":          "🛒",
+};
+
 const PLATFORM_EMOJIS = {
     pc:        "🖥️",
     playstation5: "🎮",
@@ -61,7 +88,14 @@ module.exports = {
 
         const genres = game.genres?.map(g => g.name).join(", ") || "Unknown";
         const devs   = game.developers?.map(d => d.name).join(", ") || "Unknown";
-        const stores = game.stores?.map(s => `[${s.store.name}](${s.url ?? `https://rawg.io/games/${game.slug}`})`).slice(0, 4).join(" • ") || "N/A";
+        const stores = game.stores?.length
+            ? game.stores.slice(0, 5).map(s => {
+                const slug  = s.store.slug;
+                const emoji = STORE_EMOJIS[slug] ?? "🛒";
+                const url   = STORE_URLS[slug] ?? `https://rawg.io/games/${game.slug}`;
+                return `[${emoji} ${s.store.name}](${url})`;
+            }).join(" • ")
+            : "N/A";
 
         // Strip HTML tags from description
         const description = game.description_raw

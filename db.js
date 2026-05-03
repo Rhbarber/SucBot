@@ -31,9 +31,23 @@ function buildSQLiteAdapter() {
             quantity  INTEGER NOT NULL DEFAULT 1,
             PRIMARY KEY (guild_id, user_id, item)
         );
-        CREATE TABLE IF NOT EXISTS minecraft (
-            key   TEXT PRIMARY KEY,
-            value TEXT NOT NULL
+        CREATE TABLE IF NOT EXISTS bank (
+            guild_id  TEXT NOT NULL,
+            user_id   TEXT NOT NULL,
+            balance   INTEGER NOT NULL DEFAULT 0,
+            capacity  INTEGER NOT NULL DEFAULT 5000,
+            PRIMARY KEY (guild_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS stats (
+            guild_id       TEXT NOT NULL,
+            user_id        TEXT NOT NULL,
+            total_earned   INTEGER NOT NULL DEFAULT 0,
+            total_lost     INTEGER NOT NULL DEFAULT 0,
+            games_played   INTEGER NOT NULL DEFAULT 0,
+            games_won      INTEGER NOT NULL DEFAULT 0,
+            times_robbed   INTEGER NOT NULL DEFAULT 0,
+            rob_attempts   INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (guild_id, user_id)
         );
     `);
 
@@ -59,7 +73,44 @@ function buildSQLiteAdapter() {
                 `).all(`money_${guildId}_%`, limit);
             },
         },
-
+        bank: {
+            async get(guildId, userId) {
+                const row = db.prepare("SELECT * FROM bank WHERE guild_id = ? AND user_id = ?")
+                    .get(guildId, userId);
+                return row ?? { balance: 0, capacity: 5000 };
+            },
+            async deposit(guildId, userId, amount) {
+                db.prepare(`
+                    INSERT INTO bank (guild_id, user_id, balance, capacity) VALUES (?, ?, ?, 5000)
+                    ON CONFLICT(guild_id, user_id) DO UPDATE SET balance = balance + excluded.balance
+                `).run(guildId, userId, amount);
+            },
+            async withdraw(guildId, userId, amount) {
+                db.prepare(`
+                    INSERT INTO bank (guild_id, user_id, balance, capacity) VALUES (?, ?, 0, 5000)
+                    ON CONFLICT(guild_id, user_id) DO UPDATE SET balance = MAX(0, balance - ?)
+                `).run(guildId, userId, amount);
+            },
+            async upgradeCapacity(guildId, userId, amount) {
+                db.prepare(`
+                    INSERT INTO bank (guild_id, user_id, balance, capacity) VALUES (?, ?, 0, 5000 + ?)
+                    ON CONFLICT(guild_id, user_id) DO UPDATE SET capacity = capacity + excluded.capacity - 5000
+                `).run(guildId, userId, amount);
+            },
+        },
+        stats: {
+            async get(guildId, userId) {
+                const row = db.prepare("SELECT * FROM stats WHERE guild_id = ? AND user_id = ?")
+                    .get(guildId, userId);
+                return row ?? { total_earned: 0, total_lost: 0, games_played: 0, games_won: 0, times_robbed: 0, rob_attempts: 0 };
+            },
+            async increment(guildId, userId, field, amount = 1) {
+                db.prepare(`
+                    INSERT INTO stats (guild_id, user_id, ${field}) VALUES (?, ?, ?)
+                    ON CONFLICT(guild_id, user_id) DO UPDATE SET ${field} = ${field} + excluded.${field}
+                `).run(guildId, userId, amount);
+            },
+        },
         cooldowns: {
             async get(type, guildId, userId) {
                 const row = db.prepare("SELECT value FROM cooldowns WHERE key = ?")
@@ -78,7 +129,6 @@ function buildSQLiteAdapter() {
                 }
             },
         },
-
         warnings: {
             async add(guildId, userId, modId, reason) {
                 db.prepare(`
@@ -102,7 +152,6 @@ function buildSQLiteAdapter() {
                     .run(guildId, userId);
             },
         },
-
         inventory: {
             async get(guildId, userId) {
                 return db.prepare(`
@@ -117,18 +166,17 @@ function buildSQLiteAdapter() {
                     ON CONFLICT(guild_id, user_id, item) DO UPDATE SET quantity = quantity + excluded.quantity
                 `).run(guildId, userId, item, quantity);
             },
-        },
-
-        minecraft: {
-            async get(key) {
-                const row = db.prepare("SELECT value FROM minecraft WHERE key = ?").get(key);
-                return row ? JSON.parse(row.value) : null;
-            },
-            async set(key, value) {
-                db.prepare(`
-                    INSERT INTO minecraft (key, value) VALUES (?, ?)
-                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
-                `).run(key, JSON.stringify(value));
+            async remove(guildId, userId, item, quantity = 1) {
+                const row = db.prepare("SELECT quantity FROM inventory WHERE guild_id = ? AND user_id = ? AND item = ?")
+                    .get(guildId, userId, item);
+                if (!row) return;
+                if (row.quantity <= quantity) {
+                    db.prepare("DELETE FROM inventory WHERE guild_id = ? AND user_id = ? AND item = ?")
+                        .run(guildId, userId, item);
+                } else {
+                    db.prepare("UPDATE inventory SET quantity = quantity - ? WHERE guild_id = ? AND user_id = ? AND item = ?")
+                        .run(quantity, guildId, userId, item);
+                }
             },
         },
     };
@@ -180,9 +228,25 @@ function buildMySQLAdapter() {
             )
         `);
         await pool.execute(`
-            CREATE TABLE IF NOT EXISTS minecraft (
-                \`key\`   VARCHAR(100) PRIMARY KEY,
-                value    TEXT NOT NULL
+            CREATE TABLE IF NOT EXISTS bank (
+                guild_id  VARCHAR(20) NOT NULL,
+                user_id   VARCHAR(20) NOT NULL,
+                balance   BIGINT NOT NULL DEFAULT 0,
+                capacity  BIGINT NOT NULL DEFAULT 5000,
+                PRIMARY KEY (guild_id, user_id)
+            )
+        `);
+        await pool.execute(`
+            CREATE TABLE IF NOT EXISTS stats (
+                guild_id       VARCHAR(20) NOT NULL,
+                user_id        VARCHAR(20) NOT NULL,
+                total_earned   BIGINT NOT NULL DEFAULT 0,
+                total_lost     BIGINT NOT NULL DEFAULT 0,
+                games_played   BIGINT NOT NULL DEFAULT 0,
+                games_won      BIGINT NOT NULL DEFAULT 0,
+                times_robbed   BIGINT NOT NULL DEFAULT 0,
+                rob_attempts   BIGINT NOT NULL DEFAULT 0,
+                PRIMARY KEY (guild_id, user_id)
             )
         `);
     }
@@ -216,7 +280,53 @@ function buildMySQLAdapter() {
                 return rows;
             },
         },
-
+        bank: {
+            async get(guildId, userId) {
+                const [rows] = await pool.execute(
+                    "SELECT * FROM bank WHERE guild_id = ? AND user_id = ?",
+                    [guildId, userId]
+                );
+                return rows[0] ?? { balance: 0, capacity: 5000 };
+            },
+            async deposit(guildId, userId, amount) {
+                await pool.execute(
+                    `INSERT INTO bank (guild_id, user_id, balance, capacity) VALUES (?, ?, ?, 5000)
+                     ON DUPLICATE KEY UPDATE balance = balance + VALUES(balance)`,
+                    [guildId, userId, amount]
+                );
+            },
+            async withdraw(guildId, userId, amount) {
+                await pool.execute(
+                    `INSERT INTO bank (guild_id, user_id, balance, capacity) VALUES (?, ?, 0, 5000)
+                     ON DUPLICATE KEY UPDATE balance = GREATEST(0, balance - ?)`,
+                    [guildId, userId, amount]
+                );
+            },
+            async upgradeCapacity(guildId, userId, amount) {
+                await pool.execute(
+                    `INSERT INTO bank (guild_id, user_id, balance, capacity) VALUES (?, ?, 0, ?)
+                     ON DUPLICATE KEY UPDATE capacity = capacity + VALUES(capacity) - 5000`,
+                    [guildId, userId, 5000 + amount]
+                );
+            },
+        },
+        stats: {
+            async get(guildId, userId) {
+                const [rows] = await pool.execute(
+                    "SELECT * FROM stats WHERE guild_id = ? AND user_id = ?",
+                    [guildId, userId]
+                );
+                return rows[0] ?? { total_earned: 0, total_lost: 0, games_played: 0, games_won: 0, times_robbed: 0, rob_attempts: 0 };
+            },
+            async increment(guildId, userId, field, amount = 1) {
+                const safeField = field.replace(/[^a-z_]/g, "");
+                await pool.execute(
+                    `INSERT INTO stats (guild_id, user_id, ${safeField}) VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE ${safeField} = ${safeField} + VALUES(${safeField})`,
+                    [guildId, userId, amount]
+                );
+            },
+        },
         cooldowns: {
             async get(type, guildId, userId) {
                 const [rows] = await pool.execute(
@@ -240,7 +350,6 @@ function buildMySQLAdapter() {
                 }
             },
         },
-
         warnings: {
             async add(guildId, userId, modId, reason) {
                 await pool.execute(
@@ -271,7 +380,6 @@ function buildMySQLAdapter() {
                 );
             },
         },
-
         inventory: {
             async get(guildId, userId) {
                 const [rows] = await pool.execute(
@@ -289,28 +397,29 @@ function buildMySQLAdapter() {
                     [guildId, userId, item, quantity]
                 );
             },
-        },
-
-        minecraft: {
-            async get(key) {
+            async remove(guildId, userId, item, quantity = 1) {
                 const [rows] = await pool.execute(
-                    "SELECT value FROM minecraft WHERE `key` = ?",
-                    [key]
+                    "SELECT quantity FROM inventory WHERE guild_id = ? AND user_id = ? AND item = ?",
+                    [guildId, userId, item]
                 );
-                return rows[0] ? JSON.parse(rows[0].value) : null;
-            },
-            async set(key, value) {
-                await pool.execute(
-                    `INSERT INTO minecraft (\`key\`, value) VALUES (?, ?)
-                     ON DUPLICATE KEY UPDATE value = VALUES(value)`,
-                    [key, JSON.stringify(value)]
-                );
+                if (!rows.length) return;
+                if (rows[0].quantity <= quantity) {
+                    await pool.execute(
+                        "DELETE FROM inventory WHERE guild_id = ? AND user_id = ? AND item = ?",
+                        [guildId, userId, item]
+                    );
+                } else {
+                    await pool.execute(
+                        "UPDATE inventory SET quantity = quantity - ? WHERE guild_id = ? AND user_id = ? AND item = ?",
+                        [quantity, guildId, userId, item]
+                    );
+                }
             },
         },
     };
 }
 
-// ── Export ────────────────────────────────────────────────────────────────────
+// ── Export the right adapter ──────────────────────────────────────────────────
 const type = database?.type?.toLowerCase();
 
 if (type === "mysql") {
@@ -320,5 +429,5 @@ if (type === "mysql") {
     console.log("[DB] Using SQLite adapter.");
     module.exports = buildSQLiteAdapter();
 } else {
-    throw new Error(`[DB] Unknown database type "${type}" in config.json.`);
+    throw new Error(`[DB] Unknown database type "${type}" in config.json. Expected "sqlite" or "mysql".`);
 }

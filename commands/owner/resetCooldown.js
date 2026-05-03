@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags} = require("discord.js");
 const { cooldowns } = require("../../db");
 
 module.exports = {
@@ -11,9 +11,13 @@ module.exports = {
                 .setDescription("The command to reset the cooldown for")
                 .setRequired(true)
                 .addChoices(
-                    { name: "daily",  value: "daily"  },
-                    { name: "weekly", value: "weekly" },
-                    { name: "work",   value: "work"   },
+                    { name: "daily",     value: "daily"     },
+                    { name: "weekly",    value: "weekly"    },
+                    { name: "work",      value: "work"      },
+                    { name: "coinflip",  value: "coinflip"  },
+                    { name: "slots",     value: "slots"     },
+                    { name: "blackjack", value: "blackjack" },
+                    { name: "rob",       value: "rob"       },
                 )
         )
         .addUserOption(option =>

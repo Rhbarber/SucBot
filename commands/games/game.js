@@ -73,9 +73,19 @@ module.exports = {
 
         const gameId = searchData.results[0].id;
 
-        // Fetch full game details
-        const gameRes  = await fetch(`https://api.rawg.io/api/games/${gameId}?key=${apiKey}`);
-        const game     = await gameRes.json();
+        // Fetch full game details and store links in parallel
+        const [gameRes, storesRes] = await Promise.all([
+            fetch(`https://api.rawg.io/api/games/${gameId}?key=${apiKey}`),
+            fetch(`https://api.rawg.io/api/games/${gameId}/stores?key=${apiKey}`),
+        ]);
+        const game       = await gameRes.json();
+        const storesData = storesRes.ok ? await storesRes.json() : null;
+
+        // Build a map of store_id → direct URL from the stores endpoint
+        const storeUrlMap = {};
+        for (const s of storesData?.results ?? []) {
+            storeUrlMap[s.store_id] = s.url;
+        }
 
         const platforms = (game.platforms ?? [])
             .map(p => {
@@ -92,7 +102,8 @@ module.exports = {
             ? game.stores.slice(0, 5).map(s => {
                 const slug  = s.store.slug;
                 const emoji = STORE_EMOJIS[slug] ?? "🛒";
-                const url   = STORE_URLS[slug] ?? `https://rawg.io/games/${game.slug}`;
+                // Prefer direct link from stores endpoint, fall back to store homepage
+                const url   = storeUrlMap[s.id] ?? STORE_URLS[slug] ?? `https://rawg.io/games/${game.slug}`;
                 return `[${emoji} ${s.store.name}](${url})`;
             }).join(" • ")
             : "N/A";

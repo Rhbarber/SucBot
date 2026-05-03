@@ -82,6 +82,7 @@ module.exports = {
         const storesData = storesRes.ok ? await storesRes.json() : null;
 
         // Build a map of store_id → direct URL from the stores endpoint
+        // stores endpoint: { store_id, url } — main endpoint: s.store.id
         const storeUrlMap = {};
         for (const s of storesData?.results ?? []) {
             storeUrlMap[s.store_id] = s.url;
@@ -103,7 +104,7 @@ module.exports = {
                 const slug  = s.store.slug;
                 const emoji = STORE_EMOJIS[slug] ?? "🛒";
                 // Prefer direct link from stores endpoint, fall back to store homepage
-                const url   = storeUrlMap[s.id] ?? STORE_URLS[slug] ?? `https://rawg.io/games/${game.slug}`;
+                const url   = storeUrlMap[s.store.id] ?? STORE_URLS[slug] ?? `https://rawg.io/games/${game.slug}`;
                 return `[${emoji} ${s.store.name}](${url})`;
             }).join(" • ")
             : "N/A";

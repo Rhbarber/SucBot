@@ -12,7 +12,7 @@ const { randomInt } = require("node:crypto");
 
 const COOLDOWN = 30 * 1000;
 
-const SUITS  = ["♠", "♥", "♦", "♣"];
+const SUITS  = ["♠️", "♥️", "♦️", "♣️"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
 function buildDeck() {
@@ -46,7 +46,7 @@ function formatHand(hand, hideSecond = false) {
     return hand.map((c, i) => (hideSecond && i === 1) ? "`??`" : `\`${c.value}${c.suit}\``).join(" ");
 }
 
-function buildEmbed(playerHand, dealerHand, hideDealer, status, color, embedColor) {
+function buildEmbed(playerHand, dealerHand, hideDealer, status, color, embedColor, betAmount) {
     return new EmbedBuilder()
         .setColor(color ?? embedColor)
         .setTitle("🃏 Blackjack")
@@ -57,7 +57,7 @@ function buildEmbed(playerHand, dealerHand, hideDealer, status, color, embedColo
               value: formatHand(dealerHand, hideDealer), inline: false },
         )
         .setDescription(status ?? null)
-        .setFooter({ text: `Bet: 🪙 — Hit, Stand, or Double Down` });
+        .setFooter({ text: `Bet: ${betAmount} coins — Hit, Stand, or Double Down` });
 }
 
 function disabledRow() {
@@ -124,7 +124,7 @@ module.exports = {
                 await stats.increment(guildId, userId, "total_lost", Math.abs(delta));
             }
             return interaction.reply({
-                embeds: [buildEmbed(playerHand, dealerHand, false, result, delta >= 0 ? "#2ecc71" : "#e74c3c", ec)],
+                embeds: [buildEmbed(playerHand, dealerHand, false, result, delta >= 0 ? "#2ecc71" : "#e74c3c", ec, bet)],
             });
         }
 
@@ -137,7 +137,7 @@ module.exports = {
 
         // Use withResponse instead of fetchReply (new discord.js API)
         const { resource } = await interaction.reply({
-            embeds: [buildEmbed(playerHand, dealerHand, true, null, null, ec)],
+            embeds: [buildEmbed(playerHand, dealerHand, true, null, null, ec, bet)],
             components: [actionRow(balance >= bet * 2)],
             withResponse: true,
         });
@@ -181,7 +181,7 @@ module.exports = {
             }
 
             await interaction.editReply({
-                embeds: [buildEmbed(playerHand, dealerHand, true, null, null, ec)],
+                embeds: [buildEmbed(playerHand, dealerHand, true, null, null, ec, bet)],
                 components: [actionRow(false)], // disable double after first hit
             });
         });
@@ -230,7 +230,7 @@ module.exports = {
 
             await interaction.editReply({
                 embeds: [buildEmbed(playerHand, dealerHand, false, resultText,
-                    delta > 0 ? "#2ecc71" : delta === 0 ? "#f39c12" : "#e74c3c", ec)],
+                    delta > 0 ? "#2ecc71" : delta === 0 ? "#f39c12" : "#e74c3c", ec, effectiveBet)],
                 components: [disabledRow()],
             }).catch(() => {});
         });

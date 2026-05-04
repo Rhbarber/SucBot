@@ -56,8 +56,7 @@ function buildEmbed(playerHand, dealerHand, hideDealer, status, color, embedColo
             { name: `Dealer's Hand (${hideDealer ? "?" : handValue(dealerHand)})`,
               value: formatHand(dealerHand, hideDealer), inline: false },
         )
-        .setDescription(status ?? null)
-        .setFooter({ text: `Bet: ${betAmount} coins — Hit, Stand, or Double Down` });
+        .setDescription(`${status ? `${status}\n` : ""}Bet: **${betAmount}** 🪙`);
 }
 
 function disabledRow() {

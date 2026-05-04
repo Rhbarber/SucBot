@@ -15,7 +15,7 @@ module.exports = {
             o.setName("user").setDescription("Who to rob").setRequired(true)
         ),
 
-    async execute(interaction, client) {
+    async execute(interaction, _client) {
         const { guildId } = interaction;
         const robber = interaction.user;
         const target = interaction.options.getUser("user");

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const { economy, cooldowns, stats } = require("../../db");
+const { randomInt } = require("node:crypto");
 
 const COOLDOWN = 30 * 1000; // 30 seconds
 
@@ -15,16 +16,16 @@ module.exports = {
              .setDescription("Heads or Tails")
              .setRequired(true)
              .addChoices(
-                 { name: "🪙 Heads", value: "heads" },
-                 { name: "🪙 Tails", value: "tails" },
+                 { name: "Heads", value: "heads" },
+                 { name: "Tails", value: "tails" },
              )
         ),
 
-    async execute(interaction, client) {
+    async execute(interaction, _client) {
         const { guildId } = interaction;
         const userId  = interaction.user.id;
         const side    = interaction.options.getString("side");
-        let   bet     = interaction.options.getInteger("bet");
+        const bet     = interaction.options.getInteger("bet");
 
         const last = await cooldowns.get("coinflip", guildId, userId);
         if (last && Date.now() - last < COOLDOWN) {
@@ -37,7 +38,7 @@ module.exports = {
             return interaction.reply({ content: `❌ You only have **${balance}** 🪙.`, flags: MessageFlags.Ephemeral });
         }
 
-        const result = Math.random() < 0.5 ? "heads" : "tails";
+        const result = randomInt(0, 2) === 0 ? "heads" : "tails";
         const won    = result === side;
         const delta  = won ? bet : -bet;
 
@@ -52,7 +53,7 @@ module.exports = {
         }
 
         const newBalance = await economy.getBalance(guildId, userId);
-        const emoji      = result === "heads" ? "🪙" : "🔵";
+        const emoji      = result === "heads" ? "⬆️" : "⬇️";
 
         const embed = new EmbedBuilder()
             .setColor(won ? "#2ecc71" : "#e74c3c")

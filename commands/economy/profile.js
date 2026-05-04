@@ -10,6 +10,7 @@ module.exports = {
         ),
 
     async execute(interaction, client) {
+        await interaction.deferReply();
         const target  = interaction.options.getUser("user") ?? interaction.user;
         const { guildId } = interaction;
 
@@ -21,12 +22,9 @@ module.exports = {
         ]);
 
         const total      = wallet + bankData.balance;
-        const winRate    = userStats.games_played > 0
+        const winRate = userStats.games_played > 0
             ? ((userStats.games_won / userStats.games_played) * 100).toFixed(1)
             : "0.0";
-        const robRate    = userStats.rob_attempts > 0
-            ? (((userStats.rob_attempts - userStats.times_robbed) / userStats.rob_attempts) * 100).toFixed(1)
-            : "N/A";
 
         const itemList = items.length
             ? items.map(i => `• ${i.item} ×${i.quantity}`).join("\n")
@@ -43,12 +41,12 @@ module.exports = {
                 { name: "📈 Total Earned", value: `${userStats.total_earned.toLocaleString()} 🪙`,          inline: true  },
                 { name: "📉 Total Lost",   value: `${userStats.total_lost.toLocaleString()} 🪙`,            inline: true  },
                 { name: "🎮 Games",        value: `${userStats.games_played} played | ${winRate}% win rate`, inline: true },
-                { name: "🦹 Rob Attempts", value: `${userStats.rob_attempts} attempts`,                     inline: true  },
+                { name: "🦹 Rob Stats",    value: `${userStats.rob_attempts} attempts | ${userStats.times_robbed} times robbed`, inline: true },
                 { name: "🎒 Inventory",    value: itemList,                                                  inline: false },
             )
             .setFooter({ text: `Requested by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
 };

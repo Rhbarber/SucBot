@@ -33,7 +33,7 @@ module.exports = {
             o.setName("bet").setDescription("Amount to bet").setMinValue(1).setRequired(true)
         ),
 
-    async execute(interaction, client) {
+    async execute(interaction, _client) {
         const { guildId } = interaction;
         const userId  = interaction.user.id;
         const bet     = interaction.options.getInteger("bet");

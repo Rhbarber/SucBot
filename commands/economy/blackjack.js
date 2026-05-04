@@ -12,7 +12,7 @@ const { randomInt } = require("node:crypto");
 
 const COOLDOWN = 30 * 1000;
 
-const SUITS  = ["♠️", "♥️", "♦️", "♣️"];
+const SUITS  = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
 function buildDeck() {
@@ -22,7 +22,6 @@ function buildDeck() {
             deck.push({ suit, value });
         }
     }
-    // Fisher-Yates shuffle
     for (let i = deck.length - 1; i > 0; i--) {
         const j = randomInt(0, i + 1);
         [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -44,7 +43,29 @@ function handValue(hand) {
 }
 
 function formatHand(hand, hideSecond = false) {
-    return hand.map((c, i) => (hideSecond && i === 1) ? "🂠" : `${c.value}${c.suit}`).join("  ");
+    return hand.map((c, i) => (hideSecond && i === 1) ? "`??`" : `\`${c.value}${c.suit}\``).join(" ");
+}
+
+function buildEmbed(playerHand, dealerHand, hideDealer, status, color, embedColor) {
+    return new EmbedBuilder()
+        .setColor(color ?? embedColor)
+        .setTitle("🃏 Blackjack")
+        .addFields(
+            { name: `Your Hand (${handValue(playerHand)})`,
+              value: formatHand(playerHand), inline: false },
+            { name: `Dealer's Hand (${hideDealer ? "?" : handValue(dealerHand)})`,
+              value: formatHand(dealerHand, hideDealer), inline: false },
+        )
+        .setDescription(status ?? null)
+        .setFooter({ text: `Bet: ${"\u{1FA99}"} — Hit, Stand, or Double Down` });
+}
+
+function disabledRow() {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("bj_hit").setLabel("👊 Hit").setStyle(ButtonStyle.Primary).setDisabled(true),
+        new ButtonBuilder().setCustomId("bj_stand").setLabel("✋ Stand").setStyle(ButtonStyle.Secondary).setDisabled(true),
+        new ButtonBuilder().setCustomId("bj_double").setLabel("💰 Double Down").setStyle(ButtonStyle.Success).setDisabled(true),
+    );
 }
 
 module.exports = {
@@ -57,8 +78,8 @@ module.exports = {
 
     async execute(interaction, client) {
         const { guildId } = interaction;
-        const userId = interaction.user.id;
-        const bet    = interaction.options.getInteger("bet");
+        const userId  = interaction.user.id;
+        const bet     = interaction.options.getInteger("bet");
 
         const last = await cooldowns.get("blackjack", guildId, userId);
         if (last && Date.now() - last < COOLDOWN) {
@@ -78,17 +99,9 @@ module.exports = {
         await cooldowns.set("blackjack", guildId, userId);
         await stats.increment(guildId, userId, "games_played");
 
-        const buildEmbed = (playerHand, dealerHand, hideDealer, status, color) => new EmbedBuilder()
-            .setColor(color ?? client.config.embedColor)
-            .setTitle("🃏 Blackjack")
-            .addFields(
-                { name: `🧑 Your Hand (${handValue(playerHand)})`,               value: formatHand(playerHand),          inline: false },
-                { name: `🏦 Dealer's Hand (${hideDealer ? "?" : handValue(dealerHand)})`, value: formatHand(dealerHand, hideDealer), inline: false },
-            )
-            .setDescription(status ?? null)
-            .setFooter({ text: `Bet: ${bet} 🪙`, });
+        const ec = client.config.embedColor;
 
-        // Check immediate blackjack
+        // Immediate blackjack check
         const playerBJ = handValue(playerHand) === 21;
         const dealerBJ = handValue(dealerHand) === 21;
 
@@ -110,22 +123,25 @@ module.exports = {
             } else if (delta < 0) {
                 await stats.increment(guildId, userId, "total_lost", Math.abs(delta));
             }
-            return interaction.reply({ embeds: [buildEmbed(playerHand, dealerHand, false, result, delta >= 0 ? "#2ecc71" : "#e74c3c")] });
+            return interaction.reply({
+                embeds: [buildEmbed(playerHand, dealerHand, false, result, delta >= 0 ? "#2ecc71" : "#e74c3c", ec)],
+            });
         }
 
-        // Build Hit / Stand / Double buttons
-        const actionRow = () => new ActionRowBuilder().addComponents(
+        const actionRow = (canDouble) => new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("bj_hit").setLabel("👊 Hit").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("bj_stand").setLabel("✋ Stand").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("bj_double").setLabel("💰 Double Down").setStyle(ButtonStyle.Success)
-                .setDisabled(balance < bet * 2),
+            new ButtonBuilder().setCustomId("bj_double").setLabel("💰 Double Down")
+                .setStyle(ButtonStyle.Success).setDisabled(!canDouble),
         );
 
-        const msg = await interaction.reply({
-            embeds: [buildEmbed(playerHand, dealerHand, true, null, null)],
-            components: [actionRow()],
-            fetchReply: true,
+        // Use withResponse instead of fetchReply (new discord.js API)
+        const { resource } = await interaction.reply({
+            embeds: [buildEmbed(playerHand, dealerHand, true, null, null, ec)],
+            components: [actionRow(balance >= bet * 2)],
+            withResponse: true,
         });
+        const msg = resource.message;
 
         const collector = msg.createMessageComponentCollector({
             componentType: ComponentType.Button,
@@ -138,36 +154,35 @@ module.exports = {
         collector.on("collect", async btn => {
             await btn.deferUpdate();
 
-            if (btn.customId === "bj_hit" || btn.customId === "bj_double") {
-                if (btn.customId === "bj_double") {
-                    doubled = true;
-                }
-                playerHand.push(deck.pop());
+            // Stand — stop immediately, dealer plays in the "end" handler
+            if (btn.customId === "bj_stand") {
+                collector.stop("stand");
+                return;
             }
 
+            // Double down
+            if (btn.customId === "bj_double") {
+                doubled = true;
+            }
+
+            // Hit or Double — draw a card
+            playerHand.push(deck.pop());
             const pVal = handValue(playerHand);
 
-            // Bust
             if (pVal > 21) {
                 collector.stop("bust");
                 return;
             }
 
-            // Auto-stand after double
-            if (doubled) {
-                collector.stop("stand");
-                return;
-            }
-
-            // 21 — auto stand
-            if (pVal === 21) {
+            // Auto-stand on 21 or after double
+            if (pVal === 21 || doubled) {
                 collector.stop("stand");
                 return;
             }
 
             await interaction.editReply({
-                embeds: [buildEmbed(playerHand, dealerHand, true, null, null)],
-                components: [actionRow()],
+                embeds: [buildEmbed(playerHand, dealerHand, true, null, null, ec)],
+                components: [actionRow(false)], // disable double after first hit
             });
         });
 
@@ -175,21 +190,21 @@ module.exports = {
             const effectiveBet = doubled ? bet * 2 : bet;
             const pVal = handValue(playerHand);
 
-            // Deduct double down extra if applicable
+            // Extra deduction for double down
             if (doubled) await economy.addBalance(guildId, userId, -bet);
 
             if (reason === "bust") {
                 await economy.addBalance(guildId, userId, -effectiveBet);
                 await stats.increment(guildId, userId, "total_lost", effectiveBet);
-                const disabled = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId("bj_hit").setLabel("👊 Hit").setStyle(ButtonStyle.Primary).setDisabled(true),
-                    new ButtonBuilder().setCustomId("bj_stand").setLabel("✋ Stand").setStyle(ButtonStyle.Secondary).setDisabled(true),
-                    new ButtonBuilder().setCustomId("bj_double").setLabel("💰 Double Down").setStyle(ButtonStyle.Success).setDisabled(true),
-                );
                 return interaction.editReply({
-                    embeds: [buildEmbed(playerHand, dealerHand, false, `💥 Bust! You went over 21 and lost **${effectiveBet}** 🪙.`, "#e74c3c")],
-                    components: [disabled],
-                });
+                    embeds: [buildEmbed(playerHand, dealerHand, false,
+                        `💥 Bust! You went over 21 and lost **${effectiveBet}** 🪙.`, "#e74c3c", ec)],
+                    components: [disabledRow()],
+                }).catch(() => {});
+            }
+
+            if (reason === "time") {
+                // Timed out — treat as stand
             }
 
             // Dealer draws to 17
@@ -204,7 +219,7 @@ module.exports = {
                 await stats.increment(guildId, userId, "games_won");
                 await stats.increment(guildId, userId, "total_earned", delta);
             } else if (pVal === dVal) {
-                resultText = `🤝 Push — it's a tie!`;
+                resultText = "🤝 Push — it's a tie!";
             } else {
                 delta = -effectiveBet;
                 resultText = `💸 Dealer wins. You lost **${effectiveBet}** 🪙.`;
@@ -213,15 +228,10 @@ module.exports = {
 
             await economy.addBalance(guildId, userId, delta);
 
-            const disabled = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId("bj_hit").setLabel("👊 Hit").setStyle(ButtonStyle.Primary).setDisabled(true),
-                new ButtonBuilder().setCustomId("bj_stand").setLabel("✋ Stand").setStyle(ButtonStyle.Secondary).setDisabled(true),
-                new ButtonBuilder().setCustomId("bj_double").setLabel("💰 Double Down").setStyle(ButtonStyle.Success).setDisabled(true),
-            );
-
             await interaction.editReply({
-                embeds: [buildEmbed(playerHand, dealerHand, false, resultText, delta > 0 ? "#2ecc71" : delta === 0 ? "#f39c12" : "#e74c3c")],
-                components: [disabled],
+                embeds: [buildEmbed(playerHand, dealerHand, false, resultText,
+                    delta > 0 ? "#2ecc71" : delta === 0 ? "#f39c12" : "#e74c3c", ec)],
+                components: [disabledRow()],
             }).catch(() => {});
         });
     },

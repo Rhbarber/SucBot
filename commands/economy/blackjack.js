@@ -57,7 +57,7 @@ function buildEmbed(playerHand, dealerHand, hideDealer, status, color, embedColo
               value: formatHand(dealerHand, hideDealer), inline: false },
         )
         .setDescription(status ?? null)
-        .setFooter({ text: `Bet: ${"\u{1FA99}"} — Hit, Stand, or Double Down` });
+        .setFooter({ text: `Bet: 🪙 — Hit, Stand, or Double Down` });
 }
 
 function disabledRow() {

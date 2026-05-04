@@ -12,7 +12,7 @@ const { randomInt } = require("node:crypto");
 
 const COOLDOWN = 30 * 1000;
 
-const SUITS  = ["♠️", "♥️", "♦️", "♣️"];
+const SUITS  = ["♠", "♥", "♦", "♣"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
 function buildDeck() {
@@ -43,7 +43,7 @@ function handValue(hand) {
 }
 
 function formatHand(hand, hideSecond = false) {
-    return hand.map((c, i) => (hideSecond && i === 1) ? "`??`" : `\`${c.value}${c.suit}\``).join(" ");
+    return hand.map((c, i) => (hideSecond && i === 1) ? "`??`" : `\`${c.value}${c.suit}\``).join("  ");
 }
 
 function buildEmbed(playerHand, dealerHand, hideDealer, status, color, embedColor, betAmount) {

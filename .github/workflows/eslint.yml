@@ -6,9 +6,7 @@
 # found in ECMAScript/JavaScript code.
 # More details at https://github.com/eslint/eslint
 # and https://eslint.org
-
 name: ESLint
-
 on:
   push:
     branches: [ "main" ]
@@ -16,7 +14,6 @@ on:
     branches: [ "main" ]
   schedule:
     - cron: '15 6 * * 5'
-
 jobs:
   eslint:
     name: Run eslint scanning
@@ -27,12 +24,12 @@ jobs:
       actions: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install dependencies
         run: npm ci

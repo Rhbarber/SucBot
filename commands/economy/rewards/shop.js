@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
-const { economy, bank, inventory } = require("../../db");
+const { economy, bank, inventory } = require("../../../db");
 
 const SHOP_ITEMS = [
     {

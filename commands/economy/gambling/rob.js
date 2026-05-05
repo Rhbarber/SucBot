@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
-const { economy, cooldowns, stats, inventory } = require("../../db");
+const { economy, cooldowns, stats, inventory } = require("../../../db");
 const { randomInt } = require("node:crypto");
 
 const COOLDOWN    = 5 * 60 * 1000; // 5 minutes

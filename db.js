@@ -1,5 +1,67 @@
 const { database } = require("./config.json");
 
+// ── Simple LRU cache for balance lookups ──────────────────────────────────────
+const CACHE_TTL  = 30 * 1000; // 30 seconds
+const CACHE_SIZE = 500;       // max entries
+
+class LRUCache {
+    constructor(maxSize) {
+        this.maxSize = maxSize;
+        this.map     = new Map();
+    }
+    get(key) {
+        const entry = this.map.get(key);
+        if (!entry) return null;
+        if (Date.now() > entry.expires) { this.map.delete(key); return null; }
+        // Move to end (most recently used)
+        this.map.delete(key);
+        this.map.set(key, entry);
+        return entry.value;
+    }
+    set(key, value) {
+        if (this.map.has(key)) this.map.delete(key);
+        else if (this.map.size >= this.maxSize) {
+            // Evict least recently used (first entry)
+            this.map.delete(this.map.keys().next().value);
+        }
+        this.map.set(key, { value, expires: Date.now() + CACHE_TTL });
+    }
+    invalidate(key) { this.map.delete(key); }
+}
+
+const balanceCache = new LRUCache(CACHE_SIZE);
+
+// ── Simple LRU cache for balance lookups ──────────────────────────────────────
+const CACHE_TTL  = 30 * 1000; // 30 seconds
+const CACHE_SIZE = 500;       // max entries
+
+class LRUCache {
+    constructor(maxSize) {
+        this.maxSize = maxSize;
+        this.map     = new Map();
+    }
+    get(key) {
+        const entry = this.map.get(key);
+        if (!entry) return null;
+        if (Date.now() > entry.expires) { this.map.delete(key); return null; }
+        // Move to end (most recently used)
+        this.map.delete(key);
+        this.map.set(key, entry);
+        return entry.value;
+    }
+    set(key, value) {
+        if (this.map.has(key)) this.map.delete(key);
+        else if (this.map.size >= this.maxSize) {
+            // Evict least recently used (first entry)
+            this.map.delete(this.map.keys().next().value);
+        }
+        this.map.set(key, { value, expires: Date.now() + CACHE_TTL });
+    }
+    invalidate(key) { this.map.delete(key); }
+}
+
+const balanceCache = new LRUCache(CACHE_SIZE);
+
 // ── SQLite adapter ────────────────────────────────────────────────────────────
 function buildSQLiteAdapter() {
     const Database = require("better-sqlite3");
@@ -54,15 +116,21 @@ function buildSQLiteAdapter() {
     return {
         economy: {
             async getBalance(guildId, userId) {
-                const row = db.prepare("SELECT value FROM economy WHERE key = ?")
-                    .get(`money_${guildId}_${userId}`);
-                return row?.value ?? 0;
+                const key    = `money_${guildId}_${userId}`;
+                const cached = balanceCache.get(key);
+                if (cached !== null) return cached;
+                const row   = db.prepare("SELECT value FROM economy WHERE key = ?").get(key);
+                const value = row?.value ?? 0;
+                balanceCache.set(key, value);
+                return value;
             },
             async addBalance(guildId, userId, amount) {
+                const key = `money_${guildId}_${userId}`;
                 db.prepare(`
                     INSERT INTO economy (key, value) VALUES (?, ?)
                     ON CONFLICT(key) DO UPDATE SET value = value + excluded.value
-                `).run(`money_${guildId}_${userId}`, amount);
+                `).run(key, amount);
+                balanceCache.invalidate(key); // invalidate so next read is fresh
             },
             async getLeaderboard(guildId, limit = 10) {
                 return db.prepare(`
@@ -127,6 +195,9 @@ function buildSQLiteAdapter() {
                         ON CONFLICT(key) DO UPDATE SET value = excluded.value
                     `).run(`${type}_${guildId}_${userId}`, value);
                 }
+            },
+            async cleanup(olderThan) {
+                db.prepare("DELETE FROM cooldowns WHERE value < ?").run(olderThan);
             },
         },
         warnings: {
@@ -256,18 +327,24 @@ function buildMySQLAdapter() {
     return {
         economy: {
             async getBalance(guildId, userId) {
+                const key    = `money_${guildId}_${userId}`;
+                const cached = balanceCache.get(key);
+                if (cached !== null) return cached;
                 const [rows] = await pool.execute(
-                    "SELECT value FROM economy WHERE `key` = ?",
-                    [`money_${guildId}_${userId}`]
+                    "SELECT value FROM economy WHERE `key` = ?", [key]
                 );
-                return rows[0]?.value ?? 0;
+                const value = rows[0]?.value ?? 0;
+                balanceCache.set(key, value);
+                return value;
             },
             async addBalance(guildId, userId, amount) {
+                const key = `money_${guildId}_${userId}`;
                 await pool.execute(
                     `INSERT INTO economy (\`key\`, value) VALUES (?, ?)
                      ON DUPLICATE KEY UPDATE value = value + VALUES(value)`,
-                    [`money_${guildId}_${userId}`, amount]
+                    [key, amount]
                 );
+                balanceCache.invalidate(key); // invalidate so next read is fresh
             },
             async getLeaderboard(guildId, limit = 10) {
                 const safeLimit = Math.max(1, Math.min(100, parseInt(limit)));
@@ -349,6 +426,9 @@ function buildMySQLAdapter() {
                     );
                 }
             },
+            async cleanup(olderThan) {
+                await pool.execute("DELETE FROM cooldowns WHERE value < ?", [olderThan]);
+            },
         },
         warnings: {
             async add(guildId, userId, modId, reason) {
@@ -419,15 +499,37 @@ function buildMySQLAdapter() {
     };
 }
 
+// ── Periodic cooldown cleanup ─────────────────────────────────────────────────
+// Removes expired cooldown rows every hour to keep the DB lean
+const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+
+// Max cooldown across all commands is 7 days (weekly) — anything older is safe to delete
+const MAX_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
+function scheduleCleanup(adapter) {
+    setInterval(async () => {
+        try {
+            await adapter.cooldowns.cleanup(Date.now() - MAX_COOLDOWN_MS);
+            console.log("[DB] Cooldown cleanup complete.");
+        } catch (err) {
+            console.error("[DB] Cooldown cleanup error:", err);
+        }
+    }, CLEANUP_INTERVAL);
+}
+
 // ── Export the right adapter ──────────────────────────────────────────────────
 const type = database?.type?.toLowerCase();
 
 if (type === "mysql") {
     console.log("[DB] Using MySQL/MariaDB adapter.");
-    module.exports = buildMySQLAdapter();
+    const adapter = buildMySQLAdapter();
+    scheduleCleanup(adapter);
+    module.exports = adapter;
 } else if (type === "sqlite" || !type) {
     console.log("[DB] Using SQLite adapter.");
-    module.exports = buildSQLiteAdapter();
+    const adapter = buildSQLiteAdapter();
+    scheduleCleanup(adapter);
+    module.exports = adapter;
 } else {
     throw new Error(`[DB] Unknown database type "${type}" in config.json. Expected "sqlite" or "mysql".`);
 }

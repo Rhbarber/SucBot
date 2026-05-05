@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const { economy, bank, stats, inventory } = require("../../db");
+const { economy, bank, stats, inventory } = require("../../../db");
 
 module.exports = {
     data: new SlashCommandBuilder()

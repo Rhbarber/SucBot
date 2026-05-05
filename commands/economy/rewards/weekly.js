@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const { economy, cooldowns } = require("../../db");
+const { economy, cooldowns } = require("../../../db");
 
 const TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days
 const AMOUNT  = 500;
@@ -27,8 +27,10 @@ module.exports = {
             return interaction.reply({ embeds: [embed] });
         }
 
-        await economy.addBalance(guildId, userId, AMOUNT);
-        await cooldowns.set("weekly", guildId, userId);
+        await Promise.all([
+            economy.addBalance(guildId, userId, AMOUNT),
+            cooldowns.set("weekly", guildId, userId),
+        ]);
         const balance = await economy.getBalance(guildId, userId);
 
         const embed = new EmbedBuilder()

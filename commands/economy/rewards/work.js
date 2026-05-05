@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { economy, cooldowns } = require("../../../db");
+const { randomInt } = require("node:crypto");
 
 const TIMEOUT = 12 * 60 * 60 * 1000; // 12 hours
 
@@ -39,8 +40,8 @@ module.exports = {
             return interaction.reply({ embeds: [embed] });
         }
 
-        const job    = JOBS[Math.floor(Math.random() * JOBS.length)];
-        const amount = Math.floor(Math.random() * (job.pay[1] - job.pay[0] + 1)) + job.pay[0];
+        const job    = JOBS[randomInt(0, JOBS.length)];
+        const amount = randomInt(job.pay[0], job.pay[1] + 1);
 
         await Promise.all([
             economy.addBalance(guildId, userId, amount),

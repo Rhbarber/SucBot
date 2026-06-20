@@ -31,36 +31,6 @@ class LRUCache {
 
 const balanceCache = new LRUCache(CACHE_SIZE);
 
-// ── Simple LRU cache for balance lookups ──────────────────────────────────────
-const CACHE_TTL  = 30 * 1000; // 30 seconds
-const CACHE_SIZE = 500;       // max entries
-
-class LRUCache {
-    constructor(maxSize) {
-        this.maxSize = maxSize;
-        this.map     = new Map();
-    }
-    get(key) {
-        const entry = this.map.get(key);
-        if (!entry) return null;
-        if (Date.now() > entry.expires) { this.map.delete(key); return null; }
-        // Move to end (most recently used)
-        this.map.delete(key);
-        this.map.set(key, entry);
-        return entry.value;
-    }
-    set(key, value) {
-        if (this.map.has(key)) this.map.delete(key);
-        else if (this.map.size >= this.maxSize) {
-            // Evict least recently used (first entry)
-            this.map.delete(this.map.keys().next().value);
-        }
-        this.map.set(key, { value, expires: Date.now() + CACHE_TTL });
-    }
-    invalidate(key) { this.map.delete(key); }
-}
-
-const balanceCache = new LRUCache(CACHE_SIZE);
 
 // ── SQLite adapter ────────────────────────────────────────────────────────────
 function buildSQLiteAdapter() {

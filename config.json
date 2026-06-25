@@ -5,6 +5,12 @@
     "embedColor": "#5865F2",
     "cooldown": 3,
     "logChannelId": "YOUR_LOG_CHANNEL_ID_HERE",
+
+    "pterodactyl": {
+        "enabled": false,
+        "serverName": "My Game Server"
+    },
+
     "database": {
         "type": "sqlite",
         "mysql": {

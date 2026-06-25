@@ -45,6 +45,14 @@ OPENWEATHER_API_KEY=your_openweather_api_key_here
 # Required for /game command
 # Get a free key at https://rawg.io/apidocs
 RAWG_API_KEY=your_rawg_api_key_here
+
+# Required for /server command (pterodactyl.enabled must be true in config.json)
+# PTERODACTYL_DOMAIN: Full URL to your panel, e.g. https://control.sparkedhost.us
+# PTERODACTYL_API_KEY: Client API key — generated in Account > API Credentials on the panel
+# PTERODACTYL_SERVER_ID: The short server identifier shown in the panel URL and server list
+PTERODACTYL_DOMAIN=https://your-panel-domain.com
+PTERODACTYL_API_KEY=your_client_api_key_here
+PTERODACTYL_SERVER_ID=your_server_identifier_here
 ```
 
 | Variable | Required | Description |
@@ -57,6 +65,9 @@ RAWG_API_KEY=your_rawg_api_key_here
 | `HYPIXEL_API_KEY` | ⚠️ | Required for `/hypixel`. Generate a free key at [https://developer.hypixel.net](https://developer.hypixel.net/) |
 | `OPENWEATHER_API_KEY` | ⚠️ | Required for `/weather`. Get a free key at [openweathermap.org/api](https://openweathermap.org/api). Free tier includes 1,000 calls/day. |
 | `RAWG_API_KEY` | ⚠️ | Required for `/game`. Get a free key at [rawg.io/apidocs](https://rawg.io/apidocs). Free for personal use. |
+| `PTERODACTYL_DOMAIN` | ⚠️ | Required for `/server`. Full URL to your panel (e.g. `https://control.sparkedhost.us`). |
+| `PTERODACTYL_API_KEY` | ⚠️ | Required for `/server`. Client API key — generated in **Account → API Credentials** on the panel. |
+| `PTERODACTYL_SERVER_ID` | ⚠️ | Required for `/server`. The short server identifier shown in the panel URL and server list. |
 
 ---
 
@@ -70,6 +81,12 @@ RAWG_API_KEY=your_rawg_api_key_here
     "embedColor": "#5865F2",
     "cooldown": 3,
     "logChannelId": "YOUR_LOG_CHANNEL_ID_HERE",
+
+    "pterodactyl": {
+        "enabled": false,
+        "serverName": "My Game Server"
+    },
+
     "database": {
         "type": "sqlite",
         "mysql": {
@@ -97,6 +114,8 @@ RAWG_API_KEY=your_rawg_api_key_here
 | `database.mysql.user` | `string` | Database username. |
 | `database.mysql.password` | `string` | Database password. |
 | `database.mysql.database` | `string` | Name of the database to use. The bot will create the required tables automatically on first run. |
+| `pterodactyl.enabled` | `boolean` | Set to `true` to enable the `/server` command. When `false`, the command will respond with an error if used. Requires the `PTERODACTYL_*` env variables to be set. |
+| `pterodactyl.serverName` | `string` | Display name for the server shown in command responses (e.g. `"Minecraft SMP"`). Defaults to `"Game Server"` if not set. |
 
 ## Usage
 
@@ -213,6 +232,11 @@ module.exports = {
 | `/maintenance` | Toggle maintenance mode — blocks all non-owner commands |
 | `/eval` | Execute JavaScript and return the result — useful for debugging |
 | `/massban` | Ban up to 50 users by ID at once (also usable by members with Ban Members) |
+| `/server status` | Check the current status of the game server |
+| `/server start` | Start the game server |
+| `/server stop` | Stop the game server gracefully |
+| `/server restart` | Restart the game server |
+| `/server kill` | Force-kill the server process immediately |
 
 ---
 
@@ -244,3 +268,11 @@ module.exports = {
 1. Go to [rawg.io/apidocs](https://rawg.io/apidocs) and sign up
 2. Fill in the short developer info form to receive your key
 3. Add the key to your `.env` as `RAWG_API_KEY`
+
+### Pterodactyl / Apollo Panel (Server Management)
+1. Log in to your panel (e.g. `https://control.sparkedhost.us`)
+2. Go to **Account → API Credentials** and create a new Client API key
+3. Copy the full panel URL (e.g. `https://control.sparkedhost.us`) — this is your `PTERODACTYL_DOMAIN`
+4. Find your server's identifier in the panel URL when viewing the server (e.g. `/server/a1b2c3d4`) — this is your `PTERODACTYL_SERVER_ID`
+5. Add all three values to your `.env`
+6. Set `pterodactyl.enabled` to `true` in `config.json`

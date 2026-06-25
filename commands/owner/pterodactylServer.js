@@ -16,6 +16,11 @@ const STATE_EMOJIS = {
     unknown:     "⚫",
 };
 
+// Sanitize panel domain — strip trailing slash if present
+function getDomain() {
+    return (process.env.PTERODACTYL_DOMAIN ?? "").replace(/\/+$/, "");
+}
+
 // Build Pterodactyl API request headers
 function getHeaders() {
     return {
@@ -29,15 +34,15 @@ function getHeaders() {
 // Tries /resources first (standard Pterodactyl), falls back to base server
 // endpoint which some panels (e.g. Apollo) expose differently
 async function getServerStatus() {
-    const domain   = process.env.PTERODACTYL_DOMAIN;
+    const domain   = getDomain();
     const serverId = process.env.PTERODACTYL_SERVER_ID;
     const headers  = getHeaders();
 
     // Try /resources endpoint first
-    const resRes = await fetch(
-        `${domain}/api/client/servers/${serverId}/resources`,
-        { headers }
-    );
+    const resourcesUrl = `${domain}/api/client/servers/${serverId}/resources`;
+    console.log("[SERVER] Fetching:", resourcesUrl);
+    const resRes = await fetch(resourcesUrl, { headers });
+    console.log("[SERVER] /resources status:", resRes.status);
 
     if (resRes.ok) {
         const data = await resRes.json();
@@ -65,7 +70,7 @@ async function getServerStatus() {
 
 // Send a power signal to the server
 async function sendPowerSignal(signal) {
-    const domain   = process.env.PTERODACTYL_DOMAIN;
+    const domain   = getDomain();
     const serverId = process.env.PTERODACTYL_SERVER_ID;
 
     const res = await fetch(

@@ -26,22 +26,41 @@ function getHeaders() {
 }
 
 // Fetch current server status
+// Tries /resources first (standard Pterodactyl), falls back to base server
+// endpoint which some panels (e.g. Apollo) expose differently
 async function getServerStatus() {
     const domain   = process.env.PTERODACTYL_DOMAIN;
     const serverId = process.env.PTERODACTYL_SERVER_ID;
+    const headers  = getHeaders();
 
-    const res = await fetch(
+    // Try /resources endpoint first
+    const resRes = await fetch(
         `${domain}/api/client/servers/${serverId}/resources`,
-        { headers: getHeaders() }
+        { headers }
     );
 
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(`API error ${res.status}: ${err.errors?.[0]?.detail ?? "Unknown error"}`);
+    if (resRes.ok) {
+        const data = await resRes.json();
+        return data.attributes.current_state;
     }
 
-    const data = await res.json();
-    return data.attributes.current_state; // "running" | "starting" | "stopping" | "offline"
+    // Fall back to base server endpoint — current_state is in attributes.status
+    if (resRes.status === 404) {
+        const baseRes = await fetch(
+            `${domain}/api/client/servers/${serverId}`,
+            { headers }
+        );
+        if (baseRes.ok) {
+            const data = await baseRes.json();
+            // Some panels return status under attributes.status, others under attributes.current_state
+            return data.attributes.current_state ?? data.attributes.status ?? "unknown";
+        }
+        const err = await baseRes.json().catch(() => ({}));
+        throw new Error(`API error ${baseRes.status}: ${err.errors?.[0]?.detail ?? "Unknown error"}`);
+    }
+
+    const err = await resRes.json().catch(() => ({}));
+    throw new Error(`API error ${resRes.status}: ${err.errors?.[0]?.detail ?? "Unknown error"}`);
 }
 
 // Send a power signal to the server

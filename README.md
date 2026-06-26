@@ -232,11 +232,15 @@ module.exports = {
 | `/maintenance` | Toggle maintenance mode — blocks all non-owner commands |
 | `/eval` | Execute JavaScript and return the result — useful for debugging |
 | `/massban` | Ban up to 50 users by ID at once (also usable by members with Ban Members) |
-| `/server status` | Check the current status of the game server |
+| `/server status` | Check server status with CPU, RAM, disk, network and uptime stats |
 | `/server start` | Start the game server |
 | `/server stop` | Stop the game server gracefully |
 | `/server restart` | Restart the game server |
 | `/server kill` | Force-kill the server process immediately |
+| `/server command` | Send a command directly to the server console |
+| `/server backups` | List all server backups with size and creation time |
+| `/server backup` | Create a new backup with optional name and lock |
+| `/server reinstall` | ⚠️ Reinstall the server — requires button confirmation |
 
 ---
 

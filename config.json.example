@@ -17,7 +17,7 @@
             "port": 3306,
             "user": "your_user",
             "password": "your_password",
-            "database": "sucbot"
+            "database": "nab-bot"
         }
     }
 }

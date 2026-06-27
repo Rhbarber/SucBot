@@ -108,6 +108,7 @@ function formatUptime(ms) {
 }
 
 // Build the action buttons for a selected server
+// Main row: Status | Start | Stop | Restart | More…
 function buildActionRow(serverId) {
     return new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`sv_status_${serverId}`).setLabel("Status").setEmoji("📊").setStyle(ButtonStyle.Secondary),
@@ -118,13 +119,14 @@ function buildActionRow(serverId) {
     );
 }
 
-// Build the "more actions" row
+// More row: ◀ Back | Console Cmd | Backups | Create Backup | ⚠️ Reinstall
+// Kill moved to main Stop → user must Stop then Kill if needed; or use Reinstall flow
 function buildMoreRow(serverId) {
     return new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`sv_back_${serverId}`).setLabel("Back").setEmoji("◀️").setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId(`sv_command_${serverId}`).setLabel("Console Cmd").setEmoji("📟").setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId(`sv_backups_${serverId}`).setLabel("Backups").setEmoji("💾").setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId(`sv_backup_${serverId}`).setLabel("Create Backup").setEmoji("➕").setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`sv_kill_${serverId}`).setLabel("Kill").setEmoji("💀").setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId(`sv_reinstall_${serverId}`).setLabel("Reinstall").setEmoji("⚠️").setStyle(ButtonStyle.Danger),
     );
 }
@@ -255,6 +257,18 @@ module.exports = {
                             }
 
                             return interaction.editReply({ embeds: [embed], components: [buildActionRow(serverId), selectRow] });
+                        }
+
+                        // ── BACK ─────────────────────────────────────────────
+                        if (action === "back") {
+                            const embed = new EmbedBuilder()
+                                .setColor(client.config.embedColor)
+                                .setTitle(`⚙️ ${name}`)
+                                .setDescription("Choose an action:")
+                                .addFields({ name: "Server ID", value: `\`${serverId}\``, inline: true })
+                                .setFooter({ text: `Requested by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
+
+                            return interaction.editReply({ content: null, embeds: [embed], components: [buildActionRow(serverId), selectRow] });
                         }
 
                         // ── MORE ACTIONS ──────────────────────────────────────

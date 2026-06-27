@@ -1,16 +1,15 @@
 {
     "devMode": true,
     "guildId": "YOUR_DEV_SERVER_ID_HERE",
-    "ownerId": "YOUR_DISCORD_USER_ID_HERE",
+    "ownerIds": ["YOUR_DISCORD_USER_ID_HERE"],
     "embedColor": "#5865F2",
     "cooldown": 3,
     "logChannelId": "YOUR_LOG_CHANNEL_ID_HERE",
 
     "pterodactyl": {
-        "enabled": false,
-        "serverName": "My Game Server"
+        "enabled": false
     },
-
+    
     "database": {
         "type": "sqlite",
         "mysql": {

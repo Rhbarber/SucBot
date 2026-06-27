@@ -52,7 +52,6 @@ RAWG_API_KEY=your_rawg_api_key_here
 # PTERODACTYL_SERVER_ID: The short server identifier shown in the panel URL and server list
 PTERODACTYL_DOMAIN=https://your-panel-domain.com
 PTERODACTYL_API_KEY=your_client_api_key_here
-PTERODACTYL_SERVER_ID=your_server_identifier_here
 ```
 
 | Variable | Required | Description |
@@ -67,7 +66,6 @@ PTERODACTYL_SERVER_ID=your_server_identifier_here
 | `RAWG_API_KEY` | ⚠️ | Required for `/game`. Get a free key at [rawg.io/apidocs](https://rawg.io/apidocs). Free for personal use. |
 | `PTERODACTYL_DOMAIN` | ⚠️ | Required for `/server`. Full URL to your panel (e.g. `https://control.sparkedhost.us`). |
 | `PTERODACTYL_API_KEY` | ⚠️ | Required for `/server`. Client API key — generated in **Account → API Credentials** on the panel. |
-| `PTERODACTYL_SERVER_ID` | ⚠️ | Required for `/server`. The short server identifier shown in the panel URL and server list. |
 
 ---
 
@@ -84,7 +82,6 @@ PTERODACTYL_SERVER_ID=your_server_identifier_here
 
     "pterodactyl": {
         "enabled": false,
-        "serverName": "My Game Server"
     },
 
     "database": {
@@ -115,7 +112,6 @@ PTERODACTYL_SERVER_ID=your_server_identifier_here
 | `database.mysql.password` | `string` | Database password. |
 | `database.mysql.database` | `string` | Name of the database to use. The bot will create the required tables automatically on first run. |
 | `pterodactyl.enabled` | `boolean` | Set to `true` to enable the `/server` command. When `false`, the command will respond with an error if used. Requires the `PTERODACTYL_*` env variables to be set. |
-| `pterodactyl.serverName` | `string` | Display name for the server shown in command responses (e.g. `"Minecraft SMP"`). Defaults to `"Game Server"` if not set. |
 
 ## Usage
 
@@ -232,15 +228,7 @@ module.exports = {
 | `/maintenance` | Toggle maintenance mode — blocks all non-owner commands |
 | `/eval` | Execute JavaScript and return the result — useful for debugging |
 | `/massban` | Ban up to 50 users by ID at once (also usable by members with Ban Members) |
-| `/server status` | Check server status with CPU, RAM, disk, network and uptime stats |
-| `/server start` | Start the game server |
-| `/server stop` | Stop the game server gracefully |
-| `/server restart` | Restart the game server |
-| `/server kill` | Force-kill the server process immediately |
-| `/server command` | Send a command directly to the server console |
-| `/server backups` | List all server backups with size and creation time |
-| `/server backup` | Create a new backup with optional name and lock |
-| `/server reinstall` | ⚠️ Reinstall the server — requires button confirmation |
+| `/server` | Lists all servers on the panel via a dropdown. Select one to manage it — actions include Status, Start, Stop, Restart, Kill, Console Command, Backups, Create Backup, and Reinstall (with confirmation) |
 
 ---
 
@@ -276,7 +264,7 @@ module.exports = {
 ### Pterodactyl / Apollo Panel (Server Management)
 1. Log in to your panel (e.g. `https://control.sparkedhost.us`)
 2. Go to **Account → API Credentials** and create a new Client API key
-3. Copy the full panel URL (e.g. `https://control.sparkedhost.us`) — this is your `PTERODACTYL_DOMAIN`
-4. Find your server's identifier in the panel URL when viewing the server (e.g. `/server/a1b2c3d4`) — this is your `PTERODACTYL_SERVER_ID`
-5. Add all three values to your `.env`
-6. Set `pterodactyl.enabled` to `true` in `config.json`
+3. Copy the full panel URL — this is your `PTERODACTYL_DOMAIN`
+4. Add both values to your `.env`
+5. Set `pterodactyl.enabled` to `true` in `config.json`
+6. All servers accessible by the API key will be listed automatically when you run `/server`

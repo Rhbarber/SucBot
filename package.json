@@ -14,9 +14,9 @@
     "dependencies": {
         "better-sqlite3": "^12.11.1",
         "dayjs": "^1.11.21",
-        "discord.js": "^14.26.4",
+        "discord.js": "^14.26.5",
         "dotenv": "^17.4.2",
-        "mysql2": "^3.22.5"
+        "mysql2": "^3.22.6"
     },
     "overrides": {
         "undici": "^6.27.0"

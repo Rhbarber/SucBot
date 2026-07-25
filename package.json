@@ -12,11 +12,11 @@
     "author": "Rhbarber",
     "license": "GPL-3.0",
     "dependencies": {
-        "better-sqlite3": "^12.11.1",
+        "better-sqlite3": "^13.0.1",
         "dayjs": "^1.11.21",
         "discord.js": "^14.27.0",
         "dotenv": "^17.4.2",
-        "mysql2": "^3.23.0"
+        "mysql2": "^3.23.1"
     },
     "overrides": {
         "undici": "^6.27.0"

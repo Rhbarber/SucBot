@@ -16,7 +16,7 @@
         "dayjs": "^1.11.21",
         "discord.js": "^14.27.0",
         "dotenv": "^17.4.2",
-        "mysql2": "^3.23.1"
+        "mysql2": "^3.23.2"
     },
     "overrides": {
         "undici": "^6.27.0"

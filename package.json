@@ -13,7 +13,7 @@
     "license": "GPL-3.0",
     "dependencies": {
         "better-sqlite3": "^13.0.3",
-        "dayjs": "^1.11.21",
+        "dayjs": "^1.11.23",
         "discord.js": "^14.27.0",
         "dotenv": "^17.4.2",
         "mysql2": "^3.23.3"
